@@ -54,7 +54,7 @@ if (Get-Command gh -ErrorAction SilentlyContinue) {
     Write-Host "`nGitHub CLI detected. Setting secrets automatically..." -ForegroundColor Cyan
     gh secret set AZURE_API_APP_NAME --body $ApiAppName
     gh secret set AZURE_API_BASE_URL --body $ApiBaseUrl
-    gh secret set AZURE_API_PUBLISH_PROFILE < $publishProfilePath
+    gh secret set AZURE_API_PUBLISH_PROFILE --body (Get-Content $publishProfilePath -Raw)
     gh secret set AZURE_STATIC_WEB_APPS_API_TOKEN --body $staticToken
     Write-Host "All secrets set via GitHub CLI!" -ForegroundColor Green
 } else {
