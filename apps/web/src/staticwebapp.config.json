@@ -1,0 +1,38 @@
+{
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": ["/assets/*", "/*.css", "/*.js", "/*.png", "/*.jpg", "/*.jpeg", "/*.svg", "/*.ico", "/*.woff", "/*.woff2", "/*.ttf", "/*.map", "/manifest.webmanifest"]
+  },
+  "globalHeaders": {
+    "X-Frame-Options": "SAMEORIGIN",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin"
+  },
+  "routes": [
+    {
+      "route": "/auth/*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/dashboard*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/transactions*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/reports*",
+      "rewrite": "/index.html"
+    },
+    {
+      "route": "/settings*",
+      "rewrite": "/index.html"
+    }
+  ],
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html"
+    }
+  }
+}

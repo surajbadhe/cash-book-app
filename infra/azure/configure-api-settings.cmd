@@ -3,7 +3,7 @@ setlocal
 
 set RESOURCE_GROUP=rg-cash-book-dev
 set API_APP_NAME=cashbookapi-akash-2026
-set CLIENT_URL=https://REPLACE-ME.azurestaticapps.net
+set CLIENT_URL=https://lemon-moss-0924fe500.6.azurestaticapps.net
 set MONGODB_URI=mongodb+srv://USER:PASSWORD@cluster0.xxxxx.mongodb.net/cashflow?retryWrites=true^&w=majority
 set JWT_SECRET=REPLACE_WITH_LONG_RANDOM_SECRET
 set JWT_ACCESS_EXPIRY=15m

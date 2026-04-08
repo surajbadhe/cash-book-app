@@ -43,6 +43,9 @@ coverage/
 *.tgz
 .cache/
 
+# Azure — contains deployment credentials, never commit
+.azure/
+
 # Angular
 .angular/
 apps/web/.angular/
