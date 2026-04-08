@@ -24,6 +24,7 @@ export const authInterceptor: HttpInterceptorFn = (
   next: HttpHandlerFn
 ): Observable<HttpEvent<any>> => {
   const authService = inject(AuthService);
+  const isAuthRequest = req.url.includes('/auth/');
 
   // Clone request and add Authorization header if token exists
   const token = authService.accessToken;
@@ -39,7 +40,11 @@ export const authInterceptor: HttpInterceptorFn = (
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       // Handle 401 Unauthorized errors
-      if (error.status === 401 && !req.url.includes('/auth/refresh')) {
+      if (
+        error.status === 401 &&
+        !req.url.includes('/auth/refresh') &&
+        !isAuthRequest
+      ) {
         return handle401Error(req, next, authService);
       }
 
@@ -81,14 +86,14 @@ function handle401Error(
           refreshTokenSubject.next(result.accessToken);
           return next(addTokenToRequest(request, result.accessToken));
         }
-        
-        // Refresh failed, logout user
-        authService.logout().subscribe();
+
+        // Refresh failed, clear local session without extra API calls
+        authService.expireSession();
         return throwError(() => new Error('Session expired'));
       }),
       catchError((error) => {
         isRefreshing = false;
-        authService.logout().subscribe();
+        authService.expireSession();
         return throwError(() => error);
       })
     );

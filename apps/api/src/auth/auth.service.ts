@@ -10,11 +10,13 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { UserService } from '../user/user.service';
-import { AuthProvider, UserRole } from '../user/schemas/user.schema';
+import { AuthProvider, User, UserRole } from '../user/schemas/user.schema';
 import { RefreshToken } from '../user/schemas/refresh-token.schema';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { EmailService } from './email.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +24,9 @@ export class AuthService {
     private userService: UserService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
+    @InjectModel(User.name)
+    private userModel: Model<User>,
     @InjectModel(RefreshToken.name)
     private refreshTokenModel: Model<RefreshToken>,
   ) {}
@@ -145,6 +150,69 @@ export class AuthService {
   }
 
   /**
+   * Request password reset token
+   */
+  async requestPasswordReset(email: string) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await this.userModel.findOne({ email: normalizedEmail }).exec();
+
+    if (user && user.provider === AuthProvider.LOCAL && user.isActive) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      const hashedToken = crypto
+        .createHash('sha256')
+        .update(rawToken)
+        .digest('hex');
+
+      user.resetPasswordToken = hashedToken;
+      user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+      await user.save();
+
+      const clientUrl = this.configService.get<string>('cors.origin');
+      const resetUrl = `${clientUrl}/forgot-password?token=${rawToken}`;
+      await this.emailService.sendPasswordResetEmail(normalizedEmail, resetUrl);
+    }
+
+    return {
+      message:
+        'If an account with that email exists, a reset link has been sent.',
+    };
+  }
+
+  /**
+   * Reset password using token
+   */
+  async resetPassword(token: string, password: string) {
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await this.userModel
+      .findOne({
+        resetPasswordToken: hashedToken,
+        resetPasswordExpires: { $gt: new Date() },
+      })
+      .exec();
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    if (user.provider !== AuthProvider.LOCAL) {
+      throw new BadRequestException(
+        `This account uses ${user.provider} sign-in. Use that provider to log in.`,
+      );
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(password, salt);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    await this.refreshTokenModel.deleteMany({ userId: user.id });
+
+    return { message: 'Password reset successful' };
+  }
+
+  /**
    * OAuth login (Google/GitHub)
    */
   async oauthLogin(profile: any, provider: AuthProvider) {
@@ -157,13 +225,23 @@ export class AuthService {
     let user = await this.userService.findByProvider(provider, profile.id);
 
     if (!user) {
-      // Check if user exists with the same email but different provider
+      // Check if user exists with the same email
       user = await this.userService.findByEmail(email);
-      
-      if (user && user.provider !== provider) {
-        throw new ConflictException(
-          `Email already registered with ${user.provider} provider`,
-        );
+
+      // Allow linking OAuth to existing local account by email
+      if (user) {
+        if (user.provider !== provider && user.provider !== AuthProvider.LOCAL) {
+          throw new ConflictException(
+            `Email already registered with ${user.provider} provider`,
+          );
+        }
+
+        // Save providerId for future OAuth lookups when missing
+        if (!user.providerId) {
+          user = await this.userService.update(user.id, {
+            providerId: profile.id,
+          });
+        }
       }
 
       // Create new user
@@ -176,6 +254,10 @@ export class AuthService {
           isActive: true,
         });
       }
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenException('Account is deactivated');
     }
 
     const tokens = await this.generateTokens(user.id, user.email, user.roles);

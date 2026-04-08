@@ -7,6 +7,8 @@ import {
   User,
   LoginRequest,
   RegisterRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
   AuthResponse,
   ApiResponse,
   UserRole,
@@ -93,6 +95,18 @@ export class AuthService {
       );
   }
 
+  forgotPassword(data: ForgotPasswordRequest): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.apiUrl}/forgot-password`, data, {
+      withCredentials: true,
+    });
+  }
+
+  resetPassword(data: ResetPasswordRequest): Observable<ApiResponse<null>> {
+    return this.http.post<ApiResponse<null>>(`${this.apiUrl}/reset-password`, data, {
+      withCredentials: true,
+    });
+  }
+
   /**
    * Logout user
    */
@@ -111,6 +125,16 @@ export class AuthService {
           return of(null);
         })
       );
+  }
+
+  /**
+   * Clear local session and redirect to login without making API calls
+   */
+  expireSession(redirectToLogin = true): void {
+    this.clearSession();
+    if (redirectToLogin) {
+      this.router.navigate(['/login']);
+    }
   }
 
   /**

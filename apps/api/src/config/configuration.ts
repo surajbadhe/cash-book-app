@@ -42,4 +42,9 @@ export default () => ({
     sameSite: 'strict' as const,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   },
+
+  email: {
+    connectionString: process.env.ACS_EMAIL_CONNECTION_STRING || '',
+    senderAddress: process.env.ACS_EMAIL_SENDER_ADDRESS || '',
+  },
 });

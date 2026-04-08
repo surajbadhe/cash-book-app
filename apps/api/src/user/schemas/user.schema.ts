@@ -43,6 +43,12 @@ export class User extends Document {
 
   @Prop()
   avatar?: string;
+
+  @Prop()
+  resetPasswordToken?: string;
+
+  @Prop()
+  resetPasswordExpires?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

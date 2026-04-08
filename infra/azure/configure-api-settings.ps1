@@ -77,6 +77,9 @@ $GitHubClientId = if ($env:GITHUB_CLIENT_ID) { $env:GITHUB_CLIENT_ID } else { ''
 $GitHubClientSecret = if ($env:GITHUB_CLIENT_SECRET) { $env:GITHUB_CLIENT_SECRET } else { '' }
 $GitHubCallbackUrl = if ($env:GITHUB_CALLBACK_URL) { $env:GITHUB_CALLBACK_URL } else { "$ApiBaseUrl/api/auth/github/callback" }
 
+$AcsEmailConnectionString = if ($env:ACS_EMAIL_CONNECTION_STRING) { $env:ACS_EMAIL_CONNECTION_STRING } else { '' }
+$AcsEmailSenderAddress = if ($env:ACS_EMAIL_SENDER_ADDRESS) { $env:ACS_EMAIL_SENDER_ADDRESS } else { '' }
+
 if (-not $ClientUrl) {
   Write-Host "ERROR: CLIENT_URL is required in .env" -ForegroundColor Red
   exit 1
@@ -113,6 +116,8 @@ az webapp config appsettings set `
     "GITHUB_CLIENT_ID=$GitHubClientId" `
     "GITHUB_CLIENT_SECRET=$GitHubClientSecret" `
     "GITHUB_CALLBACK_URL=$GitHubCallbackUrl" `
+    "ACS_EMAIL_CONNECTION_STRING=$AcsEmailConnectionString" `
+    "ACS_EMAIL_SENDER_ADDRESS=$AcsEmailSenderAddress" `
   -o none
 
 if ($LASTEXITCODE -ne 0) {

@@ -141,6 +141,19 @@ h2 {
     color: #374151;
   }
 
+  .label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .link-inline {
+    color: #6366f1;
+    font-size: 12px;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+
   input {
     padding: 12px 14px;
     border: 1.5px solid #e2e8f0;
@@ -188,12 +201,12 @@ h2 {
 .divider {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 12px;
   margin: 20px 0;
 
   &::before, &::after {
     content: '';
-    flex: 1;
     height: 1px;
     background: #e2e8f0;
   }
@@ -203,15 +216,15 @@ h2 {
     color: #94a3b8;
     font-weight: 500;
     white-space: nowrap;
+    text-align: center;
   }
 }
 
 /* OAuth */
 .oauth-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  display: flex;
   margin-bottom: 24px;
+  width: 100%;
 
   .btn-oauth {
     display: flex;
@@ -219,6 +232,7 @@ h2 {
     justify-content: center;
     gap: 8px;
     padding: 11px;
+    width: 100%;
     background: #fff;
     border: 1.5px solid #e2e8f0;
     border-radius: 10px;

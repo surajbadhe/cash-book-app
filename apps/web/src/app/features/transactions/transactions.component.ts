@@ -119,6 +119,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   toggleForm(): void {
     this.showForm = !this.showForm;
     this.formSuccess = false;
+
+    if (!this.showForm) {
+      this.resetEntryForm();
+    }
   }
 
   setFilter(f: 'all' | 'cash-in' | 'cash-out'): void {
@@ -202,7 +206,11 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
     if (this.dataMode === 'cloud' && this.user && this.isOnline) {
       const cat = this.remoteCategories.find((c) => c.type === v.type && c.name === v.category);
-      if (!cat?.id) return;
+      if (!cat?.id) {
+        this.form.controls.category.markAsTouched();
+        this.form.controls.category.setErrors({ required: true });
+        return;
+      }
 
       this.subs.add(
         this.cashflowApiService
@@ -294,6 +302,13 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   private resetForm(): void {
     this.formSuccess = true;
     this.categorySuccess = false;
+    this.resetEntryForm();
+    setTimeout(() => { this.formSuccess = false; }, 2000);
+  }
+
+  private resetEntryForm(): void {
+    this.showCategoryForm = false;
+    this.categoryErrorMessage = '';
     this.form.reset({
       type: 'cash-in',
       amount: null,
@@ -301,7 +316,6 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       timestamp: this.nowLocal(),
       note: '',
     });
-    setTimeout(() => { this.formSuccess = false; }, 2000);
   }
 
   private nowLocal(): string {

@@ -59,10 +59,16 @@
           <div class="form-field">
             <label>Category</label>
             <select formControlName="category">
+              @if (!currentCategories.length) {
+                <option value="">Select category</option>
+              }
               @for (c of currentCategories; track c) {
                 <option [value]="c">{{ c }}</option>
               }
             </select>
+            @if (form.controls.category.invalid && form.controls.category.touched) {
+              <span class="err">Category is required</span>
+            }
             <button type="button" class="btn-link" (click)="toggleCategoryForm()">
               {{ showCategoryForm ? 'Cancel category' : '+ Add category' }}
             </button>

@@ -26,6 +26,14 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'forgot-password',
+    canActivate: [guestGuard],
+    loadComponent: () =>
+      import('./features/auth/forgot-password/forgot-password.component').then(
+        (m) => m.ForgotPasswordComponent
+      ),
+  },
+  {
     path: 'auth/callback',
     loadComponent: () =>
       import('./features/auth/oauth-callback/oauth-callback.component').then(

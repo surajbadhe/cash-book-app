@@ -20,6 +20,8 @@ import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { AuthProvider } from '../user/schemas/user.schema';
 
 @ApiTags('Authentication')
@@ -73,6 +75,39 @@ export class AuthController {
         accessToken: result.accessToken,
         user: result.user,
       },
+    };
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset link' })
+  @HttpCode(HttpStatus.OK)
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    const result = await this.authService.requestPasswordReset(
+      forgotPasswordDto.email,
+    );
+
+    return {
+      success: true,
+      message: result.message,
+      data: null,
+    };
+  }
+
+  @Public()
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password using token' })
+  @HttpCode(HttpStatus.OK)
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    const result = await this.authService.resetPassword(
+      resetPasswordDto.token,
+      resetPasswordDto.password,
+    );
+
+    return {
+      success: true,
+      message: result.message,
+      data: null,
     };
   }
 
