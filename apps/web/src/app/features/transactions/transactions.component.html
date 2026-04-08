@@ -1,0 +1,169 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Transactions</h1>
+      <p class="page-sub">Track every cash movement</p>
+    </div>
+    <button class="btn-add" (click)="toggleForm()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        @if (showForm) {
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        } @else {
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        }
+      </svg>
+      {{ showForm ? 'Cancel' : 'Add entry' }}
+    </button>
+  </div>
+
+  @if (showForm) {
+    <div class="form-card" [class.success]="formSuccess">
+      @if (formSuccess) {
+        <div class="success-banner">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Transaction saved!
+        </div>
+      }
+      <div class="type-pills">
+        <button type="button" class="pill" [class.in]="form.controls.type.value === 'cash-in'"
+          (click)="form.controls.type.setValue('cash-in')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+          </svg>
+          Cash In
+        </button>
+        <button type="button" class="pill" [class.out]="form.controls.type.value === 'cash-out'"
+          (click)="form.controls.type.setValue('cash-out')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+          </svg>
+          Cash Out
+        </button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="entry-form">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Amount</label>
+            <div class="input-prefix">
+              <span>₹</span>
+              <input type="number" step="0.01" min="0.01" formControlName="amount" placeholder="0.00" />
+            </div>
+            @if (form.controls.amount.invalid && form.controls.amount.touched) {
+              <span class="err">Enter a valid amount</span>
+            }
+          </div>
+
+          <div class="form-field">
+            <label>Category</label>
+            <select formControlName="category">
+              @for (c of currentCategories; track c) {
+                <option [value]="c">{{ c }}</option>
+              }
+            </select>
+            <button type="button" class="btn-link" (click)="toggleCategoryForm()">
+              {{ showCategoryForm ? 'Cancel category' : '+ Add category' }}
+            </button>
+
+            @if (showCategoryForm) {
+              <div class="category-box">
+                <div class="category-inline" [formGroup]="categoryForm">
+                  <input type="text" formControlName="name" placeholder="Category name" />
+                  <select formControlName="type">
+                    <option value="cash-in">Cash In</option>
+                    <option value="cash-out">Cash Out</option>
+                  </select>
+                </div>
+
+                <button type="button" class="btn-mini" (click)="submitCategory()" [disabled]="creatingCategory">
+                  {{ creatingCategory ? 'Adding...' : 'Add' }}
+                </button>
+
+                @if (categoryForm.controls.name.invalid && categoryForm.controls.name.touched) {
+                  <span class="err">Name must be 2 to 60 characters</span>
+                }
+                @if (categoryErrorMessage) {
+                  <span class="err">{{ categoryErrorMessage }}</span>
+                }
+              </div>
+            }
+
+            @if (categorySuccess) {
+              <span class="ok">Category added</span>
+            }
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label>Date & Time</label>
+            <input type="datetime-local" formControlName="timestamp" />
+          </div>
+
+          <div class="form-field">
+            <label>Note <span class="opt">(optional)</span></label>
+            <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
+          </div>
+        </div>
+
+        <button class="btn-submit" type="submit" [class.out]="form.controls.type.value === 'cash-out'">
+          Save {{ form.controls.type.value === 'cash-in' ? 'Income' : 'Expense' }}
+        </button>
+      </form>
+    </div>
+  }
+
+  <div class="filters">
+    <button class="filter-btn" [class.active]="filterType === 'all'" (click)="setFilter('all')">All</button>
+    <button class="filter-btn in" [class.active]="filterType === 'cash-in'" (click)="setFilter('cash-in')">Cash In</button>
+    <button class="filter-btn out" [class.active]="filterType === 'cash-out'" (click)="setFilter('cash-out')">Cash Out</button>
+  </div>
+
+  @if (loading) {
+    <div class="skeleton-rows">
+      @for (_ of [1,2,3,4,5]; track _) {
+        <div class="skeleton-row"></div>
+      }
+    </div>
+  } @else if (filteredTransactions.length === 0) {
+    <div class="empty-state">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
+        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+      </svg>
+      <p>No transactions found.</p>
+    </div>
+  } @else {
+    <div class="txn-list card">
+      @for (t of filteredTransactions; track t.id) {
+        <div class="txn-row">
+          <div class="txn-icon" [class.out]="t.type === 'cash-out'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              @if (t.type === 'cash-in') {
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              } @else {
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+              }
+            </svg>
+          </div>
+          <div class="txn-body">
+            <p class="txn-cat">{{ t.category }}</p>
+            <p class="txn-meta">{{ t.timestamp | date: 'MMM d · h:mm a' }}@if (t.note) { · {{ t.note }} }</p>
+          </div>
+          <div class="txn-right">
+            <p class="txn-amount" [class.out]="t.type === 'cash-out'">
+              {{ t.type === 'cash-in' ? '+' : '-' }}{{ t.amount | currency: currencyCode : 'symbol' : '1.0-2' }}
+            </p>
+            <button class="btn-delete" (click)="delete(t.id)" title="Delete">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

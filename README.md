@@ -1,6 +1,6 @@
-# Full-Stack Starter Template
+# cash-flow
 
-A production-ready full-stack application template with **NestJS**, **MongoDB**, **Angular 21**, JWT authentication, OAuth integration, and Docker support. Built with **pnpm workspaces** for efficient monorepo management.
+A production-ready full-stack application with **NestJS**, **MongoDB**, **Angular 21**, JWT authentication, OAuth integration, and Docker support. Built with **pnpm workspaces** for efficient monorepo management.
 
 ## 🚀 Features
 
@@ -87,6 +87,10 @@ A production-ready full-stack application template with **NestJS**, **MongoDB**,
 
 ## 🛠️ Tech Stack
 
+## 📘 Design Docs
+
+- Backend API design: [docs/backend-api-design.md](docs/backend-api-design.md)
+
 ### Backend
 - **Framework:** NestJS 10+
 - **Database:** MongoDB 7
@@ -123,8 +127,8 @@ A production-ready full-stack application template with **NestJS**, **MongoDB**,
 
 ```bash
 # Clone repository
-git clone https://github.com/AkashBadhe/fullstack-nestjs-angular-starter
-cd Full-Stack-MENA
+git clone <your-repo-url>
+cd cash-flow
 
 # Install pnpm globally if not already installed
 npm install -g pnpm
@@ -154,10 +158,10 @@ NODE_ENV=development
 PORT=3000
 
 # Database
-MONGODB_URI=mongodb://admin:admin123@localhost:27017/nestjs-starter?authSource=admin
+MONGODB_URI=mongodb://admin:admin123@localhost:27017/cash-flow?authSource=admin
 MONGO_ROOT_USER=admin
 MONGO_ROOT_PASSWORD=admin123
-MONGO_DATABASE=nestjs-starter
+MONGO_DATABASE=cash-flow
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production

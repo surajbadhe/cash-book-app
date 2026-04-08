@@ -1,0 +1,25 @@
+{
+  "name": "cash-flow",
+  "short_name": "cash-flow",
+  "description": "Offline-first cash management app for restaurants and small businesses",
+  "theme_color": "#2563eb",
+  "background_color": "#f4f7fb",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "assets/icons/icon-192x192.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512x512.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

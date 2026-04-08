@@ -1,0 +1,132 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">Reports</h1>
+      <p class="page-sub">Insights on your cash flow</p>
+    </div>
+  </div>
+
+  <div class="period-tabs">
+    <button class="tab" [class.active]="period === 'daily'" [disabled]="loading" (click)="setPeriod('daily')">Today</button>
+    <button class="tab" [class.active]="period === 'weekly'" [disabled]="loading" (click)="setPeriod('weekly')">This Week</button>
+    <button class="tab" [class.active]="period === 'monthly'" [disabled]="loading" (click)="setPeriod('monthly')">This Month</button>
+  </div>
+
+  @if (loading) {
+    <!-- P&L banner skeleton -->
+    <div class="sk-banner">
+      <div class="sk-stat">
+        <div class="sk sk-label-sm"></div>
+        <div class="sk sk-value"></div>
+      </div>
+      <div class="sk-divider"></div>
+      <div class="sk-stat">
+        <div class="sk sk-label-sm"></div>
+        <div class="sk sk-value"></div>
+      </div>
+      <div class="sk-divider"></div>
+      <div class="sk-stat">
+        <div class="sk sk-label-sm"></div>
+        <div class="sk sk-value"></div>
+      </div>
+    </div>
+
+    <!-- Expense card skeleton -->
+    <div class="sk-card">
+      <div class="sk sk-card-title"></div>
+      @for (w of [90, 70, 55, 80, 45]; track w) {
+        <div class="sk-bar-row">
+          <div class="sk sk-bar-label"></div>
+          <div class="sk sk-bar-track" [style.width.%]="w"></div>
+          <div class="sk sk-bar-amount"></div>
+        </div>
+      }
+    </div>
+
+    <!-- Income card skeleton -->
+    <div class="sk-card">
+      <div class="sk sk-card-title sk-green"></div>
+      @for (w of [85, 60, 40]; track w) {
+        <div class="sk-bar-row">
+          <div class="sk sk-bar-label"></div>
+          <div class="sk sk-bar-track" [style.width.%]="w"></div>
+          <div class="sk sk-bar-amount"></div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- P&L Banner -->
+    <div class="pl-banner" [class.positive]="net >= 0" [class.negative]="net < 0">
+      <div class="pl-item">
+        <p>Total Income</p>
+        <h3>{{ totalIn | currency: currencyCode : 'symbol' : '1.0-0' }}</h3>
+      </div>
+      <div class="pl-divider"></div>
+      <div class="pl-item">
+        <p>Total Expenses</p>
+        <h3>{{ totalOut | currency: currencyCode : 'symbol' : '1.0-0' }}</h3>
+      </div>
+      <div class="pl-divider"></div>
+      <div class="pl-item net">
+        <p>Net Profit / Loss</p>
+        <h3>{{ net | currency: currencyCode : 'symbol' : '1.0-0' }}</h3>
+      </div>
+    </div>
+
+    <!-- Expense Category Breakdown -->
+    <div class="card">
+      <h2 class="card-title">Expense Breakdown by Category</h2>
+      @if (categoryStats.length === 0) {
+        <div class="empty-state">
+          <p>No expense data for this period.</p>
+        </div>
+      } @else {
+        <div class="bar-chart">
+          @for (item of categoryStats; track item.category) {
+            <div class="bar-row">
+              <div class="bar-label">
+                <span class="color-dot" [style.background]="item.color"></span>
+                <span class="cat-name">{{ item.category }}</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="item.percentage" [style.background]="item.color"></div>
+              </div>
+              <div class="bar-stats">
+                <span class="bar-pct">{{ item.percentage | number: '1.0-0' }}%</span>
+                <span class="bar-amount">{{ item.total | currency: currencyCode : 'symbol' : '1.0-0' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Income Category Breakdown -->
+    <div class="card">
+      <h2 class="card-title income-title">Income Breakdown by Category</h2>
+      @if (incomeStats.length === 0) {
+        <div class="empty-state">
+          <p>No income data for this period.</p>
+        </div>
+      } @else {
+        <div class="bar-chart">
+          @for (item of incomeStats; track item.category) {
+            <div class="bar-row">
+              <div class="bar-label">
+                <span class="color-dot" [style.background]="item.color"></span>
+                <span class="cat-name">{{ item.category }}</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill income-bar" [style.width.%]="item.percentage" [style.background]="item.color"></div>
+              </div>
+              <div class="bar-stats">
+                <span class="bar-pct">{{ item.percentage | number: '1.0-0' }}%</span>
+                <span class="bar-amount income-amount">{{ item.total | currency: currencyCode : 'symbol' : '1.0-0' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

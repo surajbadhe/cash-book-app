@@ -4,6 +4,11 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
+import { BusinessModule } from './business/business.module';
+import { CategoryModule } from './category/category.module';
+import { TransactionModule } from './transaction/transaction.module';
+import { ReportModule } from './report/report.module';
+import { SettingsModule } from './settings/settings.module';
 import { UserModule } from './user/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -67,6 +72,11 @@ import { LogsController } from './common/controllers/logs.controller';
 
     // Feature Modules
     AuthModule,
+    BusinessModule,
+    CategoryModule,
+    TransactionModule,
+    ReportModule,
+    SettingsModule,
     UserModule,
   ],
   controllers: [AppController, LogsController],

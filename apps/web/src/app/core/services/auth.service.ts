@@ -70,7 +70,7 @@ export class AuthService {
       .pipe(
         tap((response) => {
           if (response.success) {
-            this.setSession(response.data.accessToken, response.data.user);
+            this.setSession(response.data.accessToken, this.normalizeUser(response.data.user));
           }
         })
       );
@@ -87,7 +87,7 @@ export class AuthService {
       .pipe(
         tap((response) => {
           if (response.success) {
-            this.setSession(response.data.accessToken, response.data.user);
+            this.setSession(response.data.accessToken, this.normalizeUser(response.data.user));
           }
         })
       );
@@ -150,8 +150,10 @@ export class AuthService {
       .pipe(
         map((response) => {
           if (response.success && response.data) {
-            this.currentUserSubject.next(response.data);
-            return response.data;
+            const normalizedUser = this.normalizeUser(response.data as User & { sub?: string });
+            this.currentUserSubject.next(normalizedUser);
+            localStorage.setItem('user', JSON.stringify(normalizedUser));
+            return normalizedUser;
           }
           return null;
         }),
@@ -197,6 +199,13 @@ export class AuthService {
     localStorage.setItem('user', JSON.stringify(user));
   }
 
+  private normalizeUser(user: User & { sub?: string }): User {
+    return {
+      ...user,
+      id: user.id || user.sub || '',
+    };
+  }
+
   /**
    * Clear user session
    */
@@ -218,7 +227,7 @@ export class AuthService {
       try {
         const user = JSON.parse(userStr);
         this.accessTokenSubject.next(token);
-        this.currentUserSubject.next(user);
+        this.currentUserSubject.next(this.normalizeUser(user));
         
         // Verify session is still valid
         this.getCurrentUser().subscribe();

@@ -1,78 +1,95 @@
-<div class="dashboard-container">
-  <nav class="navbar">
-    <div class="nav-content">
-      <h2>Full-Stack Starter</h2>
-      <div class="nav-actions">
-        @if (user) {
-          <span class="user-email">{{ user.email }}</span>
-          @if (user.roles?.includes(userRoles.ADMIN)) {
-            <button class="btn btn-secondary" (click)="goToAdmin()">Admin Panel</button>
-          }
-          <button class="btn btn-outline" (click)="logout()">Logout</button>
-        }
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">{{ greeting }}, {{ displayName }}!</h1>
+      <p class="page-sub">{{ today }}</p>
+    </div>
+    <button class="btn-fab" (click)="navigateToAdd()" title="Add transaction">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="sync-badge" [class.local]="dataMode === 'local'">
+    <span class="dot"></span>
+    {{ dataMode === 'cloud' ? 'Cloud synced' : 'Local storage' }}
+    @if (!isOnline) { · Offline }
+  </div>
+
+  @if (loading) {
+    <div class="skeleton-grid">
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  } @else {
+    <div class="summary-grid">
+      <div class="summary-card">
+        <p class="summary-label">Today</p>
+        <p class="summary-in">+{{ dailySummary.totalIn | currency: currencyCode : 'symbol' : '1.0-0' }}</p>
+        <p class="summary-out">-{{ dailySummary.totalOut | currency: currencyCode : 'symbol' : '1.0-0' }}</p>
+        <p class="summary-net" [class.negative]="dailySummary.profit < 0">
+          {{ dailySummary.profit | currency: currencyCode : 'symbol' : '1.0-0' }}
+          <span class="net-label">net</span>
+        </p>
+      </div>
+
+      <div class="summary-card">
+        <p class="summary-label">This Week</p>
+        <p class="summary-in">+{{ weeklySummary.totalIn | currency: currencyCode : 'symbol' : '1.0-0' }}</p>
+        <p class="summary-out">-{{ weeklySummary.totalOut | currency: currencyCode : 'symbol' : '1.0-0' }}</p>
+        <p class="summary-net" [class.negative]="weeklySummary.profit < 0">
+          {{ weeklySummary.profit | currency: currencyCode : 'symbol' : '1.0-0' }}
+          <span class="net-label">net</span>
+        </p>
+      </div>
+
+      <div class="summary-card">
+        <p class="summary-label">This Month</p>
+        <p class="summary-in">+{{ monthlySummary.totalIn | currency: currencyCode : 'symbol' : '1.0-0' }}</p>
+        <p class="summary-out">-{{ monthlySummary.totalOut | currency: currencyCode : 'symbol' : '1.0-0' }}</p>
+        <p class="summary-net" [class.negative]="monthlySummary.profit < 0">
+          {{ monthlySummary.profit | currency: currencyCode : 'symbol' : '1.0-0' }}
+          <span class="net-label">net</span>
+        </p>
       </div>
     </div>
-  </nav>
 
-  <main class="main-content">
-    <div class="welcome-card">
-      <h1>Welcome to your Dashboard! 🎉</h1>
-      
-      @if (user) {
-        <div class="user-info">
-          <h3>Your Account Information</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">Email:</span>
-              <span class="value">{{ user.email }}</span>
+    <section class="card">
+      <div class="card-header">
+        <h2>Recent Transactions</h2>
+        <a routerLink="/transactions" class="see-all">See all</a>
+      </div>
+      @if (recentTransactions.length === 0) {
+        <div class="empty-state">
+          <p>No transactions yet.</p>
+          <button class="btn-text" (click)="navigateToAdd()">Add your first entry →</button>
+        </div>
+      } @else {
+        <div class="txn-list">
+          @for (t of recentTransactions; track t.id) {
+            <div class="txn-row">
+              <div class="txn-icon" [class.out]="t.type === 'cash-out'">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  @if (t.type === 'cash-in') {
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                  } @else {
+                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+                  }
+                </svg>
+              </div>
+              <div class="txn-body">
+                <p class="txn-cat">{{ t.category }}</p>
+                <p class="txn-date">{{ t.timestamp | date: 'MMM d, h:mm a' }}</p>
+              </div>
+              <div class="txn-amount" [class.out]="t.type === 'cash-out'">
+                {{ t.type === 'cash-in' ? '+' : '-' }}{{ t.amount | currency: currencyCode : 'symbol' : '1.0-2' }}
+              </div>
             </div>
-            <div class="info-item">
-              <span class="label">Provider:</span>
-              <span class="value">{{ user.provider || 'local' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="label">Roles:</span>
-              <span class="value">
-                @for (role of user.roles; track role) {
-                  <span class="badge">{{ role }}</span>
-                }
-              </span>
-            </div>
-            <div class="info-item">
-              <span class="label">Status:</span>
-              <span class="value">
-                <span class="badge badge-success">Active</span>
-              </span>
-            </div>
-          </div>
+          }
         </div>
       }
-
-      <div class="features">
-        <h3>Features</h3>
-        <div class="feature-grid">
-          <div class="feature-card">
-            <div class="icon">🔐</div>
-            <h4>Secure Authentication</h4>
-            <p>JWT-based auth with refresh token rotation</p>
-          </div>
-          <div class="feature-card">
-            <div class="icon">🔑</div>
-            <h4>OAuth Integration</h4>
-            <p>Google and GitHub login support</p>
-          </div>
-          <div class="feature-card">
-            <div class="icon">👥</div>
-            <h4>Role-Based Access</h4>
-            <p>Fine-grained permission control</p>
-          </div>
-          <div class="feature-card">
-            <div class="icon">🚀</div>
-            <h4>Production Ready</h4>
-            <p>Docker, MongoDB, and best practices</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
+    </section>
+  }
 </div>

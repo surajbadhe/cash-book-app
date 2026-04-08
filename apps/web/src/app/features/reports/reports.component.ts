@@ -1,0 +1,219 @@
+import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Subscription, forkJoin, of } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
+import { AuthService } from '../../core/services/auth.service';
+import { User } from '../../core/models/auth.models';
+import { CashTransaction } from '../../core/models/cashflow.models';
+import {
+  DashboardReportResponse,
+  mapTransactionItemToCashTransaction,
+} from '../../core/models/cashflow-api.models';
+import { CashflowApiService } from '../../core/services/cashflow-api.service';
+import { CashflowService } from '../../core/services/cashflow.service';
+
+interface CategoryStat {
+  category: string;
+  total: number;
+  percentage: number;
+  color: string;
+}
+
+const CHART_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#14b8a6'];
+
+@Component({
+  selector: 'app-reports',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './reports.component.html',
+  styleUrls: ['./reports.component.scss'],
+})
+export class ReportsComponent implements OnInit, OnDestroy {
+  private authService = inject(AuthService);
+  private cashflowService = inject(CashflowService);
+  private cashflowApiService = inject(CashflowApiService);
+  private subs = new Subscription();
+
+  user: User | null = null;
+  currencyCode = 'INR';
+  dataMode: 'cloud' | 'local' = 'local';
+  isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+  loading = true;
+
+  period: 'daily' | 'weekly' | 'monthly' = 'monthly';
+
+  totalIn = 0;
+  totalOut = 0;
+  net = 0;
+  categoryStats: CategoryStat[] = [];
+  incomeStats: CategoryStat[] = [];
+
+  ngOnInit(): void {
+    this.subs.add(
+      this.authService.currentUser$.subscribe((user) => {
+        this.user = user;
+        this.load();
+      })
+    );
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', this.onOnline);
+      window.addEventListener('offline', this.onOffline);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('online', this.onOnline);
+      window.removeEventListener('offline', this.onOffline);
+    }
+  }
+
+  setPeriod(p: 'daily' | 'weekly' | 'monthly'): void {
+    this.period = p;
+    this.load();
+  }
+
+  private load(): void {
+    this.loading = true;
+    if (this.user && this.isOnline) {
+      this.dataMode = 'cloud';
+      this.loadRemote();
+    } else {
+      this.dataMode = 'local';
+      this.loadLocal();
+    }
+  }
+
+  private loadRemote(): void {
+    const name = this.user!.email ? `${this.user!.email.split('@')[0]}'s Business` : 'My Business';
+    this.subs.add(
+      this.cashflowApiService
+        .ensureBusinessSetup(name)
+        .pipe(
+          switchMap(() =>
+            forkJoin({
+              transactions: this.cashflowApiService
+                .listTransactions({ page: 1, limit: 500 })
+                .pipe(catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+              dashboard: this.cashflowApiService.getDashboardReport(new Date().toISOString().split('T')[0]).pipe(catchError(() => of(null))),
+              settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
+            })
+          )
+        )
+        .subscribe({
+          next: ({ transactions, dashboard, settings }) => {
+            this.currencyCode = settings?.currency || 'INR';
+            const txns = transactions.items.map(mapTransactionItemToCashTransaction);
+            if (dashboard) {
+              this.applyRemote(dashboard, txns);
+            } else {
+              this.applyLocal(txns);
+            }
+            this.loading = false;
+          },
+          error: () => {
+            this.dataMode = 'local';
+            this.loadLocal();
+          },
+        })
+    );
+  }
+
+  private loadLocal(): void {
+    this.subs.add(
+      this.cashflowService.transactions$.subscribe((txns) => {
+        this.applyLocal(txns);
+        this.loading = false;
+      })
+    );
+  }
+
+  private applyRemote(d: DashboardReportResponse, txns: CashTransaction[]): void {
+    const periodData = this.period === 'daily' ? d.daily : this.period === 'weekly' ? d.weekly : d.monthly;
+    this.totalIn = periodData.totalIn;
+    this.totalOut = periodData.totalOut;
+    this.net = periodData.net;
+
+    const filtered = this.filterByPeriod(txns);
+    this.buildCategoryStats(filtered.filter((t) => t.type === 'cash-out'));
+
+    if (this.period === 'monthly' && d.expenseCategories?.length) {
+      this.categoryStats = d.expenseCategories.map((item, i) => ({
+        category: item.category,
+        total: item.amount,
+        percentage: item.percentage,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }));
+    }
+
+    const incomeFiltered = this.filterByPeriod(txns).filter((t) => t.type === 'cash-in');
+    this.buildIncomeStats(incomeFiltered);
+    if (this.period === 'monthly' && d.incomeCategories?.length) {
+      this.incomeStats = d.incomeCategories.map((item, i) => ({
+        category: item.category,
+        total: item.amount,
+        percentage: item.percentage,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }));
+    }
+  }
+
+  private applyLocal(txns: CashTransaction[]): void {
+    const filtered = this.filterByPeriod(txns);
+    this.totalIn = filtered.filter((t) => t.type === 'cash-in').reduce((s, t) => s + t.amount, 0);
+    this.totalOut = filtered.filter((t) => t.type === 'cash-out').reduce((s, t) => s + t.amount, 0);
+    this.net = this.totalIn - this.totalOut;
+    this.buildCategoryStats(filtered.filter((t) => t.type === 'cash-out'));
+    this.buildIncomeStats(filtered.filter((t) => t.type === 'cash-in'));
+  }
+
+  private filterByPeriod(txns: CashTransaction[]): CashTransaction[] {
+    const now = new Date();
+    return txns.filter((t) => {
+      const d = new Date(t.timestamp);
+      if (this.period === 'daily') {
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+      }
+      if (this.period === 'weekly') {
+        const day = now.getDay(); const offset = day === 0 ? -6 : 1 - day;
+        const start = new Date(now); start.setDate(now.getDate() + offset); start.setHours(0, 0, 0, 0);
+        const end = new Date(start); end.setDate(start.getDate() + 6); end.setHours(23, 59, 59, 999);
+        return d >= start && d <= end;
+      }
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  }
+
+  private buildCategoryStats(expenses: CashTransaction[]): void {
+    const total = expenses.reduce((s, t) => s + t.amount, 0);
+    const grouped = new Map<string, number>();
+    expenses.forEach((t) => grouped.set(t.category, (grouped.get(t.category) || 0) + t.amount));
+    this.categoryStats = [...grouped.entries()]
+      .map(([category, amount], i) => ({
+        category,
+        total: amount,
+        percentage: total > 0 ? (amount / total) * 100 : 0,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }))
+      .sort((a, b) => b.total - a.total);
+  }
+
+  private buildIncomeStats(income: CashTransaction[]): void {
+    const total = income.reduce((s, t) => s + t.amount, 0);
+    const grouped = new Map<string, number>();
+    income.forEach((t) => grouped.set(t.category, (grouped.get(t.category) || 0) + t.amount));
+    this.incomeStats = [...grouped.entries()]
+      .map(([category, amount], i) => ({
+        category,
+        total: amount,
+        percentage: total > 0 ? (amount / total) * 100 : 0,
+        color: CHART_COLORS[i % CHART_COLORS.length],
+      }))
+      .sort((a, b) => b.total - a.total);
+  }
+
+  private onOnline = (): void => { this.isOnline = true; this.load(); };
+  private onOffline = (): void => { this.isOnline = false; this.load(); };
+}

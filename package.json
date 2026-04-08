@@ -1,7 +1,7 @@
 {
-  "name": "fullstack-starter",
+  "name": "cash-flow",
   "version": "1.0.0",
-  "description": "Production-ready full-stack starter template with NestJS and Angular",
+  "description": "cash-flow application with NestJS and Angular",
   "private": true,
   "packageManager": "pnpm@9.0.0",
   "engines": {

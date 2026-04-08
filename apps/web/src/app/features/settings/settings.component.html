@@ -1,0 +1,68 @@
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Settings</h1>
+    <p class="page-sub">Manage your account & preferences</p>
+  </div>
+
+  <!-- Account Card -->
+  <section class="card">
+    <h2 class="section-title">Account</h2>
+    <div class="profile-row">
+      <div class="avatar">{{ initials }}</div>
+      <div class="profile-info">
+        @if (user) {
+          <p class="profile-email">{{ user.email }}</p>
+          <p class="profile-role">{{ user.roles?.[0] | titlecase }} Account</p>
+        }
+      </div>
+    </div>
+    <button class="btn-danger" (click)="logout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+      </svg>
+      Sign out
+    </button>
+  </section>
+
+  <!-- App Lock Card -->
+  <section class="card">
+    <h2 class="section-title">App Lock</h2>
+    <p class="section-desc">Set a 4-digit PIN to protect data on shared devices.</p>
+
+    @if (lockEnabled) {
+      <div class="lock-status">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        PIN lock is active
+      </div>
+      <button class="btn-outline-danger" (click)="disablePin()">Disable Lock</button>
+    } @else {
+      <form [formGroup]="pinForm" (ngSubmit)="savePin()" class="pin-form">
+        <input
+          type="password"
+          inputmode="numeric"
+          maxlength="4"
+          formControlName="pin"
+          placeholder="Enter 4-digit PIN"
+          class="pin-input"
+        />
+        @if (pinForm.controls.pin.invalid && pinForm.controls.pin.touched) {
+          <span class="err">Enter exactly 4 digits</span>
+        }
+        @if (pinSaved) {
+          <span class="success-msg">PIN saved!</span>
+        }
+        <button class="btn-primary" type="submit">Enable Lock</button>
+      </form>
+    }
+  </section>
+
+  <!-- App Info -->
+  <section class="card info-card">
+    <h2 class="section-title">About</h2>
+    <div class="info-row"><span>App</span><span>CashFlow Manager</span></div>
+    <div class="info-row"><span>Version</span><span>1.0.0</span></div>
+    <div class="info-row"><span>Platform</span><span>PWA</span></div>
+  </section>
+</div>

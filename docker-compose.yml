@@ -4,19 +4,19 @@ services:
   # MongoDB Database
   mongodb:
     image: mongo:7
-    container_name: fullstack-mongodb
+    container_name: cash-flow-mongodb
     restart: unless-stopped
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-nestjs-starter}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-cash-flow}
     ports:
       - '${MONGO_PORT:-27017}:27017'
     volumes:
       - mongodb_data:/data/db
       - mongodb_config:/data/configdb
     networks:
-      - fullstack-network
+      - cash-flow-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
@@ -28,14 +28,14 @@ services:
     build:
       context: .
       dockerfile: ./apps/api/Dockerfile
-    container_name: fullstack-api
+    container_name: cash-flow-api
     restart: unless-stopped
     ports:
       - '${API_PORT:-3000}:3000'
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3000
-      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGO_DATABASE:-nestjs-starter}?authSource=admin
+      MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGO_DATABASE:-cash-flow}?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
       JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
       JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
@@ -53,7 +53,7 @@ services:
       mongodb:
         condition: service_healthy
     networks:
-      - fullstack-network
+      - cash-flow-network
     healthcheck:
       test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3000/api')"]
       interval: 30s
@@ -65,14 +65,14 @@ services:
     build:
       context: .
       dockerfile: ./apps/web/Dockerfile
-    container_name: fullstack-web
+    container_name: cash-flow-web
     restart: unless-stopped
     ports:
       - '${WEB_PORT:-4200}:80'
     depends_on:
       - api
     networks:
-      - fullstack-network
+      - cash-flow-network
     healthcheck:
       test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:80/health']
       interval: 30s
@@ -86,5 +86,5 @@ volumes:
     driver: local
 
 networks:
-  fullstack-network:
+  cash-flow-network:
     driver: bridge

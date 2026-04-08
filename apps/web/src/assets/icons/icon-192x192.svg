@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="cash-flow icon">
+  <rect width="192" height="192" rx="28" fill="#2563eb"/>
+  <circle cx="96" cy="96" r="62" fill="#ffffff"/>
+  <path d="M96 52v88M72 72h35a15 15 0 010 30H85a15 15 0 000 30h35" stroke="#2563eb" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

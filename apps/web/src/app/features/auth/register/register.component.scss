@@ -1,9 +1,1 @@
-@import '../login/login.component.scss';
-
-.register-container {
-  @extend .login-container;
-}
-
-.register-card {
-  @extend .login-card;
-}
+@import '../login/login.component';
