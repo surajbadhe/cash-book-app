@@ -23,36 +23,37 @@ set RUNTIME=NODE:20-lts
 
 echo.
 echo ==== STEP 0: Verifying Azure login ====
-az account show -o table
-if errorlevel 1 (
+for /f "delims=" %%i in ('az account show --query name -o tsv 2^>^&1') do set SUBSCRIPTION=%%i
+if "%SUBSCRIPTION%"=="" (
   echo ERROR: Not logged in. Run: az login
   exit /b 1
 )
+echo Logged in. Subscription: %SUBSCRIPTION%
 
 echo.
 echo ==== STEP 1: Resource group (%RESOURCE_GROUP% in %RESOURCE_GROUP_LOCATION%) ====
 az group create --name "%RESOURCE_GROUP%" --location "%RESOURCE_GROUP_LOCATION%" -o table
-if errorlevel 1 ( echo FAILED step 1 & exit /b 1 )
+if %errorlevel% neq 0 ( echo FAILED step 1 & exit /b 1 )
 
 echo.
 echo ==== STEP 2: App Service plan (%APP_SERVICE_PLAN%) ====
 az appservice plan create --name "%APP_SERVICE_PLAN%" --resource-group "%RESOURCE_GROUP%" --location "%APP_SERVICE_LOCATION%" --sku "%APP_SERVICE_SKU%" --is-linux -o table
-if errorlevel 1 ( echo FAILED step 2 - plan name may already exist, try a different name & exit /b 1 )
+if %errorlevel% neq 0 ( echo FAILED step 2 - plan name may already exist, try a different name & exit /b 1 )
 
 echo.
 echo ==== STEP 3: API Web App (%API_APP_NAME%) ====
 az webapp create --name "%API_APP_NAME%" --resource-group "%RESOURCE_GROUP%" --plan "%APP_SERVICE_PLAN%" --runtime "%RUNTIME%" -o table
-if errorlevel 1 ( echo FAILED step 3 - app name must be globally unique on Azure & exit /b 1 )
+if %errorlevel% neq 0 ( echo FAILED step 3 - app name must be globally unique on Azure & exit /b 1 )
 
 echo.
 echo ==== STEP 4: Set API startup command ====
 az webapp config set --name "%API_APP_NAME%" --resource-group "%RESOURCE_GROUP%" --startup-file "node dist/main.js" -o none
-if errorlevel 1 ( echo FAILED step 4 & exit /b 1 )
+if %errorlevel% neq 0 ( echo FAILED step 4 & exit /b 1 )
 
 echo.
 echo ==== STEP 5: Static Web App (%STATIC_WEB_APP_NAME% in %STATIC_WEB_APP_LOCATION%) ====
 az staticwebapp create --name "%STATIC_WEB_APP_NAME%" --resource-group "%RESOURCE_GROUP%" --location "%STATIC_WEB_APP_LOCATION%" --sku "%STATIC_WEB_APP_SKU%" -o table
-if errorlevel 1 ( echo FAILED step 5 - web app name must be globally unique & exit /b 1 )
+if %errorlevel% neq 0 ( echo FAILED step 5 - web app name must be globally unique & exit /b 1 )
 
 echo.
 echo ==== STEP 6: Getting Static Web App URL ====
