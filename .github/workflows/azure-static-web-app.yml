@@ -44,13 +44,36 @@ jobs:
           };
           EOF
 
-      - name: Build and Deploy
+      - name: Check secret is set
+        shell: bash
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "ERROR: AZURE_STATIC_WEB_APPS_API_TOKEN secret is empty or not set!"
+            exit 1
+          fi
+          echo "Token is set (length: ${#TOKEN})"
+        env:
+          TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+
+      - name: Build Angular app
+        shell: bash
+        run: pnpm install --frozen-lockfile && pnpm --dir apps/web build:prod
+
+      - name: Find build output
+        shell: bash
+        run: |
+          echo "Dist contents:"
+          ls -la apps/web/dist/ || echo "No dist folder"
+          ls -la apps/web/dist/web/ 2>/dev/null || echo "No dist/web folder"
+          ls -la apps/web/dist/web/browser/ 2>/dev/null || echo "No dist/web/browser folder"
+
+      - name: Deploy to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
-          app_location: "/"
+          app_location: "apps/web/dist/web/browser"
           api_location: ""
-          output_location: "apps/web/dist/web"
-          app_build_command: "pnpm install --frozen-lockfile && pnpm --dir apps/web build:prod"
+          output_location: ""
+          skip_app_build: true
