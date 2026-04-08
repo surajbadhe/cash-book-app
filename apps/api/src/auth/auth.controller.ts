@@ -181,46 +181,6 @@ export class AuthController {
     }
   }
 
-  // GitHub OAuth
-  @Public()
-  @Get('github')
-  @ApiOperation({ summary: 'GitHub OAuth login' })
-  @UseGuards(AuthGuard('github'))
-  async githubAuth() {
-    // Initiates GitHub OAuth flow
-  }
-
-  @Public()
-  @Get('github/callback')
-  @ApiOperation({ summary: 'GitHub OAuth callback' })
-  @UseGuards(AuthGuard('github'))
-  async githubAuthCallback(
-    @Request() req: any,
-    @Response({ passthrough: true }) res: ExpressResponse,
-  ) {
-    try {
-      // req.user is already the tokens object set by GithubStrategy
-      const result = req.user;
-
-      if (!result?.accessToken) {
-        throw new Error('OAuth login failed: no token returned from strategy');
-      }
-
-      // Set refresh token in httpOnly cookie
-      this.setRefreshTokenCookie(res, result.refreshToken);
-
-      // Redirect to frontend with access token
-      const clientUrl = this.configService.get<string>('cors.origin');
-      res.redirect(`${clientUrl}/auth/callback?token=${result.accessToken}`);
-      return;
-    } catch (error: any) {
-      const clientUrl = this.configService.get<string>('cors.origin');
-      const message = encodeURIComponent(error?.message || 'OAuth login failed');
-      res.redirect(`${clientUrl}/auth/callback?error=${message}`);
-      return;
-    }
-  }
-
   /**
    * Helper method to set refresh token cookie
    */

@@ -9,7 +9,6 @@ import { UserModule } from '../user/user.module';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
-import { GithubStrategy } from './strategies/github.strategy';
 import {
   RefreshToken,
   RefreshTokenSchema,
@@ -39,7 +38,6 @@ import {
     JwtStrategy,
     RefreshTokenStrategy,
     GoogleStrategy,
-    GithubStrategy,
   ],
   exports: [AuthService],
 })
