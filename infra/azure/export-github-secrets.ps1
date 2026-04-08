@@ -1,14 +1,65 @@
-# =============================================================
-# No edits needed ? values match bootstrap.ps1
-# =============================================================
-$ResourceGroup     = "rg-cash-book-dev"
-$ApiAppName        = "cashbookapi-akash-2026"
-$StaticWebAppName  = "cashbookweb-akash-2026"
-$OutputDir         = ".azure"
-# =============================================================
+param(
+  [string]$EnvFilePath = ".env",
+  [string]$OutputDir = ".azure"
+)
+
+function Import-DotEnvFile {
+  param([Parameter(Mandatory = $true)][string]$Path)
+
+  Get-Content $Path | ForEach-Object {
+    $line = $_.Trim()
+    if (-not $line -or $line.StartsWith('#')) { return }
+
+    if ($line.StartsWith('export ')) {
+      $line = $line.Substring(7).Trim()
+    }
+
+    $eq = $line.IndexOf('=')
+    if ($eq -lt 1) { return }
+
+    $key = $line.Substring(0, $eq).Trim()
+    $value = $line.Substring($eq + 1).Trim()
+
+    if (
+      ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+      ($value.StartsWith("'") -and $value.EndsWith("'"))
+    ) {
+      $value = $value.Substring(1, $value.Length - 2)
+    }
+
+    [Environment]::SetEnvironmentVariable($key, $value, 'Process')
+  }
+}
 
 $ErrorActionPreference = "Stop"
-$ApiBaseUrl = "https://$ApiAppName.azurewebsites.net"
+
+$envCandidates = @(
+  (Join-Path (Get-Location) $EnvFilePath),
+  (Join-Path $PSScriptRoot "..\..\$EnvFilePath")
+)
+
+$loadedEnvPath = $null
+foreach ($candidate in $envCandidates | Select-Object -Unique) {
+  if (Test-Path $candidate) {
+    Import-DotEnvFile -Path $candidate
+    $loadedEnvPath = (Resolve-Path $candidate).Path
+    break
+  }
+}
+
+if (-not $loadedEnvPath) {
+  Write-Host "ERROR: Could not find env file '$EnvFilePath'." -ForegroundColor Red
+  Write-Host "Tried current directory and repo root." -ForegroundColor Yellow
+  Write-Host "Create one from infra/azure/.env.azure.example" -ForegroundColor Yellow
+  exit 1
+}
+
+Write-Host "Loaded env from: $loadedEnvPath" -ForegroundColor Green
+
+$ResourceGroup = if ($env:AZURE_RESOURCE_GROUP) { $env:AZURE_RESOURCE_GROUP } else { 'rg-cash-book-dev' }
+$ApiAppName = if ($env:AZURE_API_APP_NAME) { $env:AZURE_API_APP_NAME } else { 'cashbookapi-akash-2026' }
+$StaticWebAppName = if ($env:AZURE_STATIC_WEB_APP_NAME) { $env:AZURE_STATIC_WEB_APP_NAME } else { 'cashbookweb-akash-2026' }
+$ApiBaseUrl = if ($env:AZURE_API_BASE_URL) { $env:AZURE_API_BASE_URL } else { "https://$ApiAppName.azurewebsites.net" }
 
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 $publishProfilePath = Join-Path $OutputDir "api-publish-profile.xml"

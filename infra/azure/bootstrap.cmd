@@ -54,13 +54,13 @@ echo  API URL : https://%API_APP_NAME%.azurewebsites.net
 echo  Web URL : https://!STATIC_WEB_APP_HOST!
 echo ============================================================
 echo.
-echo  Next - edit infra\azure\configure-api-settings.cmd and set:
+echo  Next - create/update .env ^(or copy infra\azure\.env.azure.example to .env^) and set:
 echo    CLIENT_URL  = https://!STATIC_WEB_APP_HOST!
 echo    MONGODB_URI = your Atlas connection string
 echo    JWT_SECRET  = a long random string
 echo.
-echo  Then run: infra\azure\configure-api-settings.cmd
-echo  Then run: infra\azure\export-github-secrets.cmd
+echo  Then run: powershell -ExecutionPolicy Bypass -File infra\azure\configure-api-settings.ps1
+echo  Then run: powershell -ExecutionPolicy Bypass -File infra\azure\export-github-secrets.ps1
 echo ============================================================
 
 endlocal

@@ -51,10 +51,10 @@ Write-Host " API URL : https://$ApiAppName.azurewebsites.net" -ForegroundColor Y
 Write-Host " Web URL : https://$webHost" -ForegroundColor Yellow
 Write-Host "============================================================`n" -ForegroundColor Green
 Write-Host "Next steps:" -ForegroundColor Cyan
-Write-Host "  1. Edit infra\azure\configure-api-settings.cmd and set:"
+Write-Host "  1. Create/update .env (or copy infra\azure\.env.azure.example to .env) and set:"
 Write-Host "       CLIENT_URL  = https://$webHost"
 Write-Host "       MONGODB_URI = your Atlas connection string"
 Write-Host "       JWT_SECRET  = a long random string"
-Write-Host "  2. Run: infra\azure\configure-api-settings.cmd"
-Write-Host "  3. Run: infra\azure\export-github-secrets.cmd"
+Write-Host "  2. Run: .\infra\azure\configure-api-settings.ps1"
+Write-Host "  3. Run: .\infra\azure\export-github-secrets.ps1"
 Write-Host "  4. Add the printed secrets to GitHub repo Settings -> Secrets"
