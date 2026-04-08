@@ -11,6 +11,7 @@ import {
   mapTransactionItemToCashTransaction,
 } from '../../core/models/cashflow-api.models';
 import { CashflowApiService } from '../../core/services/cashflow-api.service';
+import { BusinessContextService } from '../../core/services/business-context.service';
 import { CashflowService } from '../../core/services/cashflow.service';
 
 interface Summary {
@@ -30,6 +31,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private cashflowService = inject(CashflowService);
   private cashflowApiService = inject(CashflowApiService);
+  private businessContext = inject(BusinessContextService);
   private router = inject(Router);
   private subs = new Subscription();
 
@@ -101,8 +103,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       : 'My Business';
 
     this.subs.add(
-      this.cashflowApiService
-        .ensureBusinessSetup(businessName)
+      this.businessContext
+          .ensureBusinessReady(businessName)
         .pipe(
           switchMap(() =>
             forkJoin({

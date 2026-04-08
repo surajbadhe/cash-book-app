@@ -11,6 +11,7 @@ import {
 import { Observable, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, filter, take, switchMap } from 'rxjs/operators';
 import { AuthService } from '../services/auth.service';
+import { BusinessContextService } from '../services/business-context.service';
 
 let isRefreshing = false;
 const refreshTokenSubject = new BehaviorSubject<string | null>(null);
@@ -24,12 +25,22 @@ export const authInterceptor: HttpInterceptorFn = (
   next: HttpHandlerFn
 ): Observable<HttpEvent<any>> => {
   const authService = inject(AuthService);
+  const businessContext = inject(BusinessContextService);
   const isAuthRequest = req.url.includes('/auth/');
 
   // Clone request and add Authorization header if token exists
   const token = authService.accessToken;
   if (token) {
     req = addTokenToRequest(req, token);
+  }
+
+  const businessId = businessContext.currentBusinessId;
+  if (businessId && !req.url.includes('/auth/')) {
+    req = req.clone({
+      setHeaders: {
+        'x-business-id': businessId,
+      },
+    });
   }
 
   // Always include credentials (for httpOnly cookies)

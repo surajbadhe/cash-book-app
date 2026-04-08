@@ -203,7 +203,18 @@ export class AuthService {
     
     // Fetch user details
     this.getCurrentUser().subscribe({
-      next: () => this.router.navigate(['/dashboard']),
+      next: () => {
+        const inviteToken = localStorage.getItem('pendingInviteToken');
+        if (inviteToken) {
+          localStorage.removeItem('pendingInviteToken');
+          this.router.navigate(['/invite/accept'], {
+            queryParams: { token: inviteToken },
+          });
+          return;
+        }
+
+        this.router.navigate(['/dashboard']);
+      },
       error: () => {
         this.clearSession();
         this.router.navigate(['/login'], {

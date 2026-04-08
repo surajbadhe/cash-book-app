@@ -10,8 +10,8 @@ export class ReportService {
     private readonly transactionService: TransactionService,
   ) {}
 
-  async getDashboardReport(userId: string, dateInput?: string) {
-    const business = await this.businessService.findByOwnerId(userId);
+  async getDashboardReport(userId: string, dateInput?: string, businessId?: string) {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const selectedDate = dateInput ? new Date(`${dateInput}T00:00:00.000Z`) : new Date();
 
     const dayStart = new Date(selectedDate);
@@ -47,8 +47,8 @@ export class ReportService {
     };
   }
 
-  async getExpensesByCategory(userId: string, from: string, to: string) {
-    const business = await this.businessService.findByOwnerId(userId);
+  async getExpensesByCategory(userId: string, from: string, to: string, businessId?: string) {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const transactions = await this.transactionService.getTransactionsForRange(
       business.id,
       new Date(`${from}T00:00:00.000Z`),

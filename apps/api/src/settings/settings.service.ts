@@ -12,13 +12,13 @@ export class SettingsService {
     private readonly businessService: BusinessService,
   ) {}
 
-  async getForCurrentUser(userId: string): Promise<AppPreference> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async getForCurrentUser(userId: string, businessId?: string): Promise<AppPreference> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     return this.findOrCreateDefaults(business.id, business.currency, business.timezone);
   }
 
-  async updateForCurrentUser(userId: string, dto: UpdateSettingsDto): Promise<AppPreference> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async updateForCurrentUser(userId: string, dto: UpdateSettingsDto, businessId?: string): Promise<AppPreference> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const preferences = await this.findOrCreateDefaults(business.id, business.currency, business.timezone);
 
     Object.assign(preferences, dto);

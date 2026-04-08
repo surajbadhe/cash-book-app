@@ -5,10 +5,13 @@ import { environment } from '../../../environments/environment';
 import {
   ApiEnvelope,
   AppSettings,
+  BusinessMember,
+  BusinessInvitePreview,
   BusinessProfile,
   CategoryItem,
   DashboardReportResponse,
   normalizeId,
+  TransactionImportResponse,
   TransactionListResponse,
 } from '../models/cashflow-api.models';
 import { TransactionType } from '../models/cashflow.models';
@@ -21,10 +24,10 @@ export class CashflowApiService {
   private readonly apiUrl = environment.apiUrl;
 
   ensureBusinessSetup(defaultBusinessName: string): Observable<BusinessProfile> {
-    return this.getMyBusiness().pipe(
-      switchMap((business) => {
-        if (business) {
-          return of(business);
+    return this.listBusinesses().pipe(
+      switchMap((businesses) => {
+        if (businesses.length > 0) {
+          return of(businesses[0]);
         }
 
         return this.createBusiness({
@@ -32,10 +35,14 @@ export class CashflowApiService {
           type: 'restaurant',
           currency: 'INR',
           timezone: 'Asia/Kolkata',
-        }).pipe(
-          switchMap((created) => this.seedDefaultCategories().pipe(map(() => created)))
-        );
+        }).pipe(switchMap((created) => this.seedDefaultCategories().pipe(map(() => created))));
       })
+    );
+  }
+
+  listBusinesses(): Observable<BusinessProfile[]> {
+    return this.http.get<ApiEnvelope<BusinessProfile[]>>(`${this.apiUrl}/businesses`).pipe(
+      map((response) => response.data.map((item) => normalizeId(item)))
     );
   }
 
@@ -50,6 +57,73 @@ export class CashflowApiService {
     return this.http
       .post<ApiEnvelope<BusinessProfile>>(`${this.apiUrl}/businesses`, payload)
       .pipe(map((response) => normalizeId(response.data)));
+  }
+
+  updateBusiness(id: string, payload: Partial<BusinessProfile>): Observable<BusinessProfile> {
+    return this.http
+      .patch<ApiEnvelope<BusinessProfile>>(`${this.apiUrl}/businesses/${id}`, payload)
+      .pipe(map((response) => normalizeId(response.data)));
+  }
+
+  listBusinessMembers(businessId: string): Observable<BusinessMember[]> {
+    return this.http
+      .get<ApiEnvelope<BusinessMember[]>>(`${this.apiUrl}/businesses/${businessId}/members`)
+      .pipe(map((response) => response.data));
+  }
+
+  addBusinessMember(
+    businessId: string,
+    payload: { email: string; role?: 'manager' | 'employee' },
+  ): Observable<BusinessMember[]> {
+    return this.http
+      .post<ApiEnvelope<BusinessMember[]>>(`${this.apiUrl}/businesses/${businessId}/members`, payload)
+      .pipe(map((response) => response.data));
+  }
+
+  updateBusinessMember(
+    businessId: string,
+    memberUserId: string,
+    payload: { role: 'manager' | 'employee' },
+  ): Observable<BusinessMember> {
+    return this.http
+      .patch<ApiEnvelope<BusinessMember>>(
+        `${this.apiUrl}/businesses/${businessId}/members/${memberUserId}`,
+        payload,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  removeBusinessMember(businessId: string, memberUserId: string): Observable<void> {
+    return this.http
+      .delete<ApiEnvelope<unknown>>(`${this.apiUrl}/businesses/${businessId}/members/${memberUserId}`)
+      .pipe(map(() => void 0));
+  }
+
+  sendBusinessInvite(
+    businessId: string,
+    payload: { email: string; role?: 'manager' | 'employee' },
+  ): Observable<{ id: string; email: string; role: 'manager' | 'employee'; expiresAt: string }> {
+    return this.http
+      .post<ApiEnvelope<{ id: string; email: string; role: 'manager' | 'employee'; expiresAt: string }>>(
+        `${this.apiUrl}/businesses/${businessId}/invites`,
+        payload,
+      )
+      .pipe(map((response) => response.data));
+  }
+
+  getInvitePreview(token: string): Observable<BusinessInvitePreview> {
+    return this.http
+      .get<ApiEnvelope<BusinessInvitePreview>>(`${this.apiUrl}/businesses/invites/preview?token=${encodeURIComponent(token)}`)
+      .pipe(map((response) => response.data));
+  }
+
+  acceptBusinessInvite(token: string): Observable<{ businessId: string; businessName: string; role: string }> {
+    return this.http
+      .post<ApiEnvelope<{ businessId: string; businessName: string; role: string }>>(
+        `${this.apiUrl}/businesses/invites/accept`,
+        { token },
+      )
+      .pipe(map((response) => response.data));
   }
 
   getCategories(type?: TransactionType): Observable<CategoryItem[]> {
@@ -115,8 +189,40 @@ export class CashflowApiService {
       .pipe(map(() => void 0));
   }
 
+  importTransactions(file: File): Observable<TransactionImportResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    return this.http
+      .post<ApiEnvelope<TransactionImportResponse>>(`${this.apiUrl}/transactions/import`, formData)
+      .pipe(map((response) => response.data));
+  }
+
+  updateTransaction(id: string, payload: {
+    type?: TransactionType;
+    amount?: number;
+    categoryId?: string;
+    occurredAt?: string;
+    note?: string;
+  }): Observable<void> {
+    const sanitizedPayload = {
+      ...payload,
+      note: payload.note?.trim() || undefined,
+    };
+
+    return this.http
+      .patch<ApiEnvelope<unknown>>(`${this.apiUrl}/transactions/${id}`, sanitizedPayload)
+      .pipe(map(() => void 0));
+  }
+
   deleteTransaction(id: string): Observable<void> {
     return this.http.delete<ApiEnvelope<unknown>>(`${this.apiUrl}/transactions/${id}`).pipe(map(() => void 0));
+  }
+
+  bulkDeleteTransactions(ids: string[]): Observable<{ deletedCount: number }> {
+    return this.http
+      .post<ApiEnvelope<{ deletedCount: number }>>(`${this.apiUrl}/transactions/bulk-delete`, { ids })
+      .pipe(map((response) => response.data));
   }
 
   getDashboardReport(date: string): Observable<DashboardReportResponse> {

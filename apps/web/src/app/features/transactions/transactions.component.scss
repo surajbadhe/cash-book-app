@@ -304,3 +304,16 @@
 
   p { color: #94a3b8; font-size: 14px; margin: 0; }
 }
+
+
+/* Toast Notification */
+@keyframes slideIn {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

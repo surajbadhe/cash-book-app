@@ -43,6 +43,6 @@ import { User, UserSchema } from '../user/schemas/user.schema';
     RefreshTokenStrategy,
     GoogleStrategy,
   ],
-  exports: [AuthService],
+  exports: [AuthService, EmailService],
 })
 export class AuthModule {}

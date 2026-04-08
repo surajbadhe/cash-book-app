@@ -41,6 +41,13 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'invite/accept',
+    loadComponent: () =>
+      import('./features/invite/accept-invite.component').then(
+        (m) => m.AcceptInviteComponent
+      ),
+  },
+  {
     path: '',
     canActivate: [authGuard],
     loadComponent: () =>

@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -15,10 +15,12 @@ export class RegisterComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
 
   registerForm: FormGroup;
   loading = false;
   errorMessage = '';
+  inviteToken = '';
 
   constructor() {
     this.registerForm = this.fb.group({
@@ -32,6 +34,8 @@ export class RegisterComponent {
     }, {
       validators: this.passwordMatchValidator,
     });
+
+    this.inviteToken = this.route.snapshot.queryParamMap.get('inviteToken') || '';
   }
 
   passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
@@ -52,7 +56,11 @@ export class RegisterComponent {
 
     this.authService.register({ email, password }).subscribe({
       next: () => {
-        this.router.navigate(['/dashboard']);
+        if (this.inviteToken) {
+          this.router.navigate(['/invite/accept'], { queryParams: { token: this.inviteToken } });
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       },
       error: (error) => {
         this.errorMessage = error.error?.message || 'Registration failed. Please try again.';
@@ -65,6 +73,9 @@ export class RegisterComponent {
   }
 
   loginWithGoogle(): void {
+    if (this.inviteToken) {
+      localStorage.setItem('pendingInviteToken', this.inviteToken);
+    }
     this.authService.loginWithOAuth('google');
   }
 }

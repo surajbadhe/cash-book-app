@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Headers, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -15,8 +15,8 @@ export class ReportController {
 
   @Get('dashboard')
   @ApiOperation({ summary: 'Get mobile dashboard report' })
-  async dashboard(@CurrentUser('sub') userId: string, @Query() query: DashboardReportDto) {
-    const report = await this.reportService.getDashboardReport(userId, query.date);
+  async dashboard(@CurrentUser('sub') userId: string, @Query() query: DashboardReportDto, @Headers('x-business-id') businessId?: string) {
+    const report = await this.reportService.getDashboardReport(userId, query.date, businessId);
     return {
       success: true,
       message: 'Dashboard report retrieved successfully',
@@ -29,8 +29,9 @@ export class ReportController {
   async expensesByCategory(
     @CurrentUser('sub') userId: string,
     @Query() query: ExpensesByCategoryDto,
+    @Headers('x-business-id') businessId?: string,
   ) {
-    const report = await this.reportService.getExpensesByCategory(userId, query.from, query.to);
+    const report = await this.reportService.getExpensesByCategory(userId, query.from, query.to, businessId);
     return {
       success: true,
       message: 'Expense analysis retrieved successfully',

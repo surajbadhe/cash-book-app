@@ -12,7 +12,7 @@
       <div class="profile-info">
         @if (user) {
           <p class="profile-email">{{ user.email }}</p>
-          <p class="profile-role">{{ user.roles?.[0] | titlecase }} Account</p>
+            <p class="profile-role">{{ user.roles[0] | titlecase }} Account</p>
         }
       </div>
     </div>
@@ -22,6 +22,117 @@
       </svg>
       Sign out
     </button>
+  </section>
+
+  <!-- Shops and Employees Management -->
+  <section class="card">
+    <div class="section-header-row">
+      <div>
+        <h2 class="section-title">Shops</h2>
+        <p class="section-desc">Create multiple shops and switch which one is active.</p>
+      </div>
+      <button class="btn-primary btn-small" type="button" (click)="createNewShop()">New Shop</button>
+    </div>
+
+    @if (businesses.length > 0) {
+      <div class="shop-tabs">
+        @for (business of businesses; track business.id) {
+          <button
+            type="button"
+            class="shop-chip"
+            [class.active]="currentBusiness?.id === business.id"
+            (click)="switchShop(business.id || '')"
+          >
+            {{ business.name }}
+            <span>{{ business.accessRole || 'owner' }}</span>
+          </button>
+        }
+      </div>
+    }
+
+    <form [formGroup]="shopForm" (ngSubmit)="saveShop()" class="stack-form">
+      <label>
+        <span>Shop name</span>
+        <input formControlName="name" placeholder="Main Branch" />
+      </label>
+      <label>
+        <span>Phone</span>
+        <input formControlName="phone" placeholder="Optional" />
+      </label>
+      <label>
+        <span>Address</span>
+        <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
+      </label>
+
+      @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
+        <p class="err">Shop name must be at least 2 characters.</p>
+      }
+      @if (shopError) {
+        <p class="err">{{ shopError }}</p>
+      }
+      @if (shopSaved) {
+        <p class="success-msg">Shop saved successfully.</p>
+      }
+
+      <button class="btn-primary" type="submit">{{ currentBusiness?.id ? 'Save Shop' : 'Create Shop' }}</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2 class="section-title">Employees</h2>
+    <p class="section-desc">Send an invite by email so employees can join and add entries for this shop.</p>
+
+    @if (currentBusiness?.id) {
+      <form [formGroup]="memberForm" (ngSubmit)="addEmployee()" class="stack-form">
+        <label>
+          <span>Employee email</span>
+          <input formControlName="email" placeholder="employee@example.com" />
+        </label>
+        <label>
+          <span>Role</span>
+          <select formControlName="role">
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+          </select>
+        </label>
+
+        @if (memberForm.controls.email.touched && memberForm.controls.email.invalid) {
+          <p class="err">Enter a valid email address.</p>
+        }
+        @if (memberError) {
+          <p class="err">{{ memberError }}</p>
+        }
+        @if (memberSaved) {
+          <p class="success-msg">Invite sent successfully.</p>
+        }
+
+        <button class="btn-primary" type="submit">Send Invite</button>
+      </form>
+
+      @if (loadingMembers) {
+        <p class="section-desc">Loading active members…</p>
+      } @else {
+        <div class="member-list">
+          @for (member of members; track member.userId) {
+            <div class="member-row">
+              <div>
+                <strong>{{ member.email }}</strong>
+                <p>{{ member.role | titlecase }}</p>
+              </div>
+              @if (member.role !== 'owner') {
+                <button class="btn-outline-danger btn-small" type="button" (click)="removeEmployee(member)">Remove</button>
+              }
+            </div>
+          }
+
+          @if (members.length === 0) {
+            <p class="section-desc">No active members yet.</p>
+          }
+        </div>
+      }
+    } @else {
+      <p class="section-desc">Create or select a shop first.</p>
+    }
   </section>
 
   <!-- App Lock Card -->

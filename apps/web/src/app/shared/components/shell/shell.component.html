@@ -10,6 +10,22 @@
         </span>
         <span class="logo-text">CashFlow</span>
       </div>
+      @if (businesses$ | async; as businesses) {
+        @if (businesses.length > 0) {
+          <div class="business-switcher">
+            <label for="desktopBusinessSwitcher">Shop</label>
+            <select
+              id="desktopBusinessSwitcher"
+              [value]="(currentBusiness$ | async)?.id || ''"
+              (change)="switchBusiness($any($event.target).value)"
+            >
+              @for (business of businesses; track business.id) {
+                <option [value]="business.id">{{ business.name }}</option>
+              }
+            </select>
+          </div>
+        }
+      }
     </div>
 
     <nav class="sidebar-nav">
@@ -47,7 +63,7 @@
           <div class="avatar">{{ getInitial(user.email) }}</div>
           <div class="user-info">
             <p class="user-email">{{ user.email }}</p>
-            <p class="user-role">{{ user.roles?.[0] | titlecase }}</p>
+            <p class="user-role">{{ user.roles[0] | titlecase }}</p>
           </div>
         </div>
         <button class="logout-btn" (click)="logout()">
@@ -82,6 +98,19 @@
         </span>
         <span class="logo-text">CashFlow</span>
       </div>
+      @if (businesses$ | async; as businesses) {
+        @if (businesses.length > 0) {
+          <select
+            class="mobile-business-switcher"
+            [value]="(currentBusiness$ | async)?.id || ''"
+            (change)="switchBusiness($any($event.target).value)"
+          >
+            @for (business of businesses; track business.id) {
+              <option [value]="business.id">{{ business.name }}</option>
+            }
+          </select>
+        }
+      }
       @if (user$ | async; as user) {
         <div class="header-avatar">{{ getInitial(user.email) }}</div>
       }

@@ -17,6 +17,7 @@ import {
   mapTransactionItemToCashTransaction,
 } from '../../core/models/cashflow-api.models';
 import { CashflowApiService } from '../../core/services/cashflow-api.service';
+import { BusinessContextService } from '../../core/services/business-context.service';
 import { CashflowService } from '../../core/services/cashflow.service';
 
 @Component({
@@ -30,6 +31,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private cashflowService = inject(CashflowService);
   private cashflowApiService = inject(CashflowApiService);
+  private businessContext = inject(BusinessContextService);
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private subs = new Subscription();
@@ -50,6 +52,35 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   categorySuccess = false;
   creatingCategory = false;
   categoryErrorMessage = '';
+  importing = false;
+  importSuccessMessage = '';
+  importErrorMessage = '';
+  importDetailedErrors: Array<{
+    rowNumber: number;
+    message: string;
+    date: string;
+    amount: string;
+    category: string;
+  }> = [];
+  showImportErrorDetails = false;
+
+  toastMessage: string | null = null;
+  toastType: 'success' | 'error' = 'success';
+  private toastTimer: ReturnType<typeof setTimeout> | null = null;
+
+  editingTransactionId: string | null = null;
+  editForm = this.fb.group({
+    type: this.fb.nonNullable.control<TransactionType>('cash-in'),
+    amount: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01)]),
+    category: this.fb.nonNullable.control<string>(CASH_IN_CATEGORIES[0], [Validators.required]),
+    timestamp: this.fb.nonNullable.control<string>(this.nowLocal(), [Validators.required]),
+    note: this.fb.nonNullable.control<string>(''),
+  });
+  editSuccess = false;
+  editError = '';
+
+  selectedIds = new Set<string>();
+  showBulkDeleteConfirm = false;
 
   form = this.fb.group({
     type: this.fb.nonNullable.control<TransactionType>('cash-in'),
@@ -65,10 +96,173 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   });
 
   filterType: 'all' | 'cash-in' | 'cash-out' = 'all';
+  searchTerm = '';
+  categoryFilter = '';
+  fromDate = '';
+  toDate = '';
+  sortBy: 'occurredAt' | 'amount' | 'categoryName' = 'occurredAt';
+  sortOrder: 'asc' | 'desc' = 'desc';
+  currentPage = 1;
+  pageSize = 20;
+  totalItems = 0;
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   get filteredTransactions(): CashTransaction[] {
-    if (this.filterType === 'all') return this.transactions;
-    return this.transactions.filter((t) => t.type === this.filterType);
+    let result = [...this.transactions];
+
+    if (this.dataMode === 'cloud') {
+      return result;
+    }
+
+    if (this.filterType !== 'all') {
+      result = result.filter((item) => item.type === this.filterType);
+    }
+
+    if (this.searchTerm.trim()) {
+      const search = this.searchTerm.trim().toLowerCase();
+      result = result.filter(
+        (item) =>
+          item.category.toLowerCase().includes(search) ||
+          (item.note || '').toLowerCase().includes(search)
+      );
+    }
+
+    if (this.categoryFilter) {
+      result = result.filter((item) => item.category === this.categoryFilter);
+    }
+
+    if (this.fromDate) {
+      const from = new Date(`${this.fromDate}T00:00:00.000Z`).getTime();
+      result = result.filter((item) => new Date(item.timestamp).getTime() >= from);
+    }
+
+    if (this.toDate) {
+      const to = new Date(`${this.toDate}T23:59:59.999Z`).getTime();
+      result = result.filter((item) => new Date(item.timestamp).getTime() <= to);
+    }
+
+    result.sort((left, right) => {
+      let compare = 0;
+
+      if (this.sortBy === 'amount') {
+        const leftSigned = left.type === 'cash-out' ? left.amount * -1 : left.amount;
+        const rightSigned = right.type === 'cash-out' ? right.amount * -1 : right.amount;
+        compare = leftSigned - rightSigned;
+      } else if (this.sortBy === 'categoryName') {
+        compare = left.category.localeCompare(right.category);
+      } else {
+        compare = new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime();
+      }
+
+      return this.sortOrder === 'asc' ? compare : compare * -1;
+    });
+
+    return result;
+  }
+
+  get pagedTransactions(): CashTransaction[] {
+    if (this.dataMode === 'cloud') {
+      return this.filteredTransactions;
+    }
+
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.filteredTransactions.slice(start, start + this.pageSize);
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.totalItems / this.pageSize));
+  }
+
+  get startItemIndex(): number {
+    if (!this.totalItems) {
+      return 0;
+    }
+    return (this.currentPage - 1) * this.pageSize + 1;
+  }
+
+  get endItemIndex(): number {
+    if (!this.totalItems) {
+      return 0;
+    }
+    return Math.min(this.currentPage * this.pageSize, this.totalItems);
+  }
+
+  get filterCategoryOptions(): string[] {
+    if (this.dataMode === 'cloud') {
+      return this.remoteCategories.map((category) => category.id || '').filter(Boolean);
+    }
+
+    const categories = new Set(this.transactions.map((item) => item.category));
+    return [...categories].sort((a, b) => a.localeCompare(b));
+  }
+
+  getCategoryLabel(categoryValue: string): string {
+    if (this.dataMode === 'cloud') {
+      return this.remoteCategories.find((category) => category.id === categoryValue)?.name || categoryValue;
+    }
+
+    return categoryValue;
+  }
+
+  get selectedCount(): number {
+    return this.selectedIds.size;
+  }
+
+  toggleSelect(id: string): void {
+    if (this.selectedIds.has(id)) {
+      this.selectedIds.delete(id);
+    } else {
+      this.selectedIds.add(id);
+    }
+  }
+
+  toggleSelectAll(): void {
+    if (this.selectedIds.size === this.pagedTransactions.length) {
+      this.selectedIds.clear();
+    } else {
+      this.pagedTransactions.forEach((t) => this.selectedIds.add(t.id));
+    }
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectedIds.has(id);
+  }
+
+  get isAllSelected(): boolean {
+    return this.pagedTransactions.length > 0 && this.selectedIds.size === this.pagedTransactions.length;
+  }
+
+  showBulkDeleteConfirmDialog(): void {
+    if (this.selectedIds.size === 0) {
+      return;
+    }
+    this.showBulkDeleteConfirm = true;
+  }
+
+  cancelBulkDelete(): void {
+    this.showBulkDeleteConfirm = false;
+  }
+
+  confirmBulkDelete(): void {
+    const ids = Array.from(this.selectedIds);
+    if (ids.length === 0) {
+      this.cancelBulkDelete();
+      return;
+    }
+
+    this.subs.add(
+      this.cashflowApiService.bulkDeleteTransactions(ids).subscribe({
+        next: (result) => {
+          this.selectedIds.clear();
+          this.showBulkDeleteConfirm = false;
+          this.loadRemote();
+        },
+        error: (err) => {
+          console.error('Bulk delete error:', err);
+          this.showBulkDeleteConfirm = false;
+        },
+      })
+    );
   }
 
   get currentCategories(): string[] {
@@ -110,6 +304,14 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+      this.toastTimer = null;
+    }
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', this.onOnline);
       window.removeEventListener('offline', this.onOffline);
@@ -118,7 +320,6 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   toggleForm(): void {
     this.showForm = !this.showForm;
-    this.formSuccess = false;
 
     if (!this.showForm) {
       this.resetEntryForm();
@@ -127,6 +328,152 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   setFilter(f: 'all' | 'cash-in' | 'cash-out'): void {
     this.filterType = f;
+    this.refreshFilters();
+  }
+
+  onSearchInput(value: string): void {
+    this.searchTerm = value;
+
+    if (this.dataMode !== 'cloud') {
+      this.refreshFilters();
+      return;
+    }
+
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+
+    this.searchDebounceTimer = setTimeout(() => {
+      this.refreshFilters();
+    }, 350);
+  }
+
+  onCategoryFilterChange(value: string): void {
+    this.categoryFilter = value;
+    this.refreshFilters();
+  }
+
+  onDateFilterChange(which: 'from' | 'to', value: string): void {
+    if (which === 'from') {
+      this.fromDate = value;
+    } else {
+      this.toDate = value;
+    }
+    this.refreshFilters();
+  }
+
+  onSortChange(value: string): void {
+    const [sortBy, sortOrder] = value.split(':');
+    if (
+      (sortBy === 'occurredAt' || sortBy === 'amount' || sortBy === 'categoryName') &&
+      (sortOrder === 'asc' || sortOrder === 'desc')
+    ) {
+      this.sortBy = sortBy;
+      this.sortOrder = sortOrder;
+      this.refreshFilters();
+    }
+  }
+
+  onPageSizeChange(value: string): void {
+    const parsed = Number(value);
+    if (Number.isNaN(parsed) || parsed < 10 || parsed > 200) {
+      return;
+    }
+
+    this.pageSize = parsed;
+    this.currentPage = 1;
+    this.refreshFilters(false);
+  }
+
+  goToPage(page: number): void {
+    const target = Math.min(Math.max(page, 1), this.totalPages);
+    if (target === this.currentPage) {
+      return;
+    }
+
+    this.currentPage = target;
+    if (this.dataMode === 'cloud') {
+      this.loadRemote();
+    }
+  }
+
+  get selectedSortOption(): string {
+    return `${this.sortBy}:${this.sortOrder}`;
+  }
+
+  resetFilters(): void {
+    this.filterType = 'all';
+    this.searchTerm = '';
+    this.categoryFilter = '';
+    this.fromDate = '';
+    this.toDate = '';
+    this.sortBy = 'occurredAt';
+    this.sortOrder = 'desc';
+    this.refreshFilters();
+  }
+
+  triggerImport(input: HTMLInputElement): void {
+    this.importErrorMessage = '';
+    this.importSuccessMessage = '';
+    input.click();
+  }
+
+  onImportFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!this.user || !this.isOnline || this.dataMode !== 'cloud') {
+      this.importErrorMessage = 'Bulk import is available only when you are signed in and online.';
+      input.value = '';
+      return;
+    }
+
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith('.csv') && !lowerName.endsWith('.tsv') && !lowerName.endsWith('.txt')) {
+      this.importErrorMessage = 'Please upload a CSV, TSV, or TXT file.';
+      input.value = '';
+      return;
+    }
+
+    this.importing = true;
+    this.importErrorMessage = '';
+    this.importSuccessMessage = '';
+    this.importDetailedErrors = [];
+    this.showImportErrorDetails = false;
+
+    this.subs.add(
+      this.cashflowApiService.importTransactions(file).subscribe({
+        next: (result) => {
+          const parts = [`Imported ${result.createdCount} transaction(s)`];
+          if (result.skippedCount) {
+            parts.push(`${result.skippedCount} skipped`);
+          }
+          if (result.categoriesCreated) {
+            parts.push(`${result.categoriesCreated} category(s) added`);
+          }
+          if (result.errors.length) {
+            parts.push(`${result.errors.length} row error(s) — view details`);
+            this.importDetailedErrors = result.errors;
+            this.showImportErrorDetails = true;
+          }
+          this.importSuccessMessage = parts.join(' · ');
+          this.loadRemote();
+        },
+        error: (err) => {
+          this.importErrorMessage = err?.error?.message || 'Unable to import file';
+          this.importDetailedErrors = [];
+          this.showImportErrorDetails = false;
+        },
+        complete: () => {
+          this.importing = false;
+          input.value = '';
+        },
+      })
+    );
   }
 
   toggleCategoryForm(): void {
@@ -171,7 +518,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
             this.categoryForm.reset({ name: '', type });
           },
           error: (err) => {
-            this.categoryErrorMessage = err?.error?.message || 'Unable to create category';
+               this.categoryErrorMessage = err?.error?.message || 'Unable to create category';
+               this.showToast(this.categoryErrorMessage, 'error');
           },
           complete: () => {
             this.creatingCategory = false;
@@ -221,9 +569,17 @@ export class TransactionsComponent implements OnInit, OnDestroy {
             occurredAt: new Date(v.timestamp).toISOString(),
             note: v.note,
           })
-          .subscribe(() => {
-            this.resetForm();
-            this.loadRemote();
+          .subscribe({
+            next: () => {
+              this.resetForm();
+              this.loadRemote();
+            },
+            error: (err) => {
+              this.showToast(
+                err?.error?.message || 'Failed to create transaction',
+                'error'
+              );
+            },
           })
       );
     } else {
@@ -246,6 +602,82 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     }
   }
 
+  openEdit(transaction: CashTransaction): void {
+    if (this.dataMode !== 'cloud') {
+      return;
+    }
+
+    this.editingTransactionId = transaction.id;
+    this.editSuccess = false;
+    this.editError = '';
+
+    const category = this.remoteCategories.find((c) => c.name === transaction.category);
+    const type = transaction.type as TransactionType;
+    const dateStr = new Date(transaction.timestamp);
+    const localDateTime = new Date(dateStr.getTime() - dateStr.getTimezoneOffset() * 60_000)
+      .toISOString()
+      .slice(0, 16);
+
+    this.editForm.reset({
+      type,
+      amount: transaction.amount,
+      category: transaction.category,
+      timestamp: localDateTime,
+      note: transaction.note || '',
+    });
+  }
+
+  closeEdit(): void {
+    this.editingTransactionId = null;
+    this.editSuccess = false;
+    this.editError = '';
+    this.editForm.reset({
+      type: 'cash-in',
+      amount: null,
+      category: this.currentCategories[0] || CASH_IN_CATEGORIES[0],
+      timestamp: this.nowLocal(),
+      note: '',
+    });
+  }
+
+  submitEdit(): void {
+    if (!this.editingTransactionId || this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+
+    const v = this.editForm.getRawValue();
+    const category = this.remoteCategories.find((c) => c.name === v.category);
+
+    if (!category?.id) {
+      this.editError = 'Category not found';
+      return;
+    }
+
+    this.subs.add(
+      this.cashflowApiService
+        .updateTransaction(this.editingTransactionId, {
+          type: v.type,
+          amount: Number(v.amount),
+          categoryId: category.id,
+          occurredAt: new Date(v.timestamp).toISOString(),
+          note: v.note,
+        })
+        .subscribe({
+          next: () => {
+            this.editSuccess = true;
+            setTimeout(() => {
+              this.closeEdit();
+              this.loadRemote();
+            }, 1500);
+          },
+          error: (err) => {
+            this.editError = err?.error?.message || 'Unable to update transaction';
+          },
+        })
+    );
+  }
+
   private load(): void {
     if (this.user && this.isOnline) {
       this.dataMode = 'cloud';
@@ -260,15 +692,15 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.loading = true;
     const name = this.user!.email ? `${this.user!.email.split('@')[0]}'s Business` : 'My Business';
     this.subs.add(
-      this.cashflowApiService
-        .ensureBusinessSetup(name)
+      this.businessContext
+        .ensureBusinessReady(name)
         .pipe(
           switchMap(() =>
             forkJoin({
               categories: this.cashflowApiService.getCategories().pipe(catchError(() => of([]))),
               transactions: this.cashflowApiService
-                .listTransactions({ page: 1, limit: 200 })
-                .pipe(catchError(() => of({ items: [], page: 1, limit: 200, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                .listTransactions(this.buildTransactionQuery())
+                .pipe(catchError(() => of({ items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
               settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
             })
           )
@@ -277,6 +709,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           next: ({ categories, transactions, settings }) => {
             this.remoteCategories = categories;
             this.transactions = transactions.items.map(mapTransactionItemToCashTransaction);
+            this.currentPage = transactions.page;
+            this.pageSize = transactions.limit;
+            this.totalItems = transactions.total;
             this.currencyCode = settings?.currency || 'INR';
             this.loading = false;
           },
@@ -294,16 +729,65 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         this.transactions = [...txns].sort(
           (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         );
+        this.totalItems = this.filteredTransactions.length;
+        if (this.currentPage > this.totalPages) {
+          this.currentPage = this.totalPages;
+        }
         this.loading = false;
       })
     );
   }
 
+  private buildTransactionQuery(): Record<string, string | number | undefined> {
+    return {
+      page: this.currentPage,
+      limit: this.pageSize,
+      search: this.searchTerm.trim() || undefined,
+      type: this.filterType === 'all' ? undefined : this.filterType,
+      categoryId: this.categoryFilter || undefined,
+      from: this.fromDate || undefined,
+      to: this.toDate || undefined,
+      sortBy: this.sortBy,
+      sortOrder: this.sortOrder,
+    };
+  }
+
+  private refreshFilters(resetPage: boolean = true): void {
+    if (resetPage) {
+      this.currentPage = 1;
+    }
+
+    if (this.dataMode === 'cloud' && this.user && this.isOnline) {
+      this.loadRemote();
+      return;
+    }
+
+    this.totalItems = this.filteredTransactions.length;
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = this.totalPages;
+    }
+  }
+
+  private showToast(message: string, type: 'success' | 'error' = 'success'): void {
+    // Clear existing timer if any
+    if (this.toastTimer) {
+      clearTimeout(this.toastTimer);
+    }
+
+    this.toastMessage = message;
+    this.toastType = type;
+
+    // Auto-dismiss after 3.5 seconds
+    this.toastTimer = setTimeout(() => {
+      this.toastMessage = null;
+      this.toastTimer = null;
+    }, 3500);
+  }
+
   private resetForm(): void {
-    this.formSuccess = true;
     this.categorySuccess = false;
     this.resetEntryForm();
-    setTimeout(() => { this.formSuccess = false; }, 2000);
+    this.showToast('Transaction created successfully!', 'success');
   }
 
   private resetEntryForm(): void {

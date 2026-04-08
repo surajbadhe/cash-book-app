@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Patch, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -14,8 +14,8 @@ export class SettingsController {
 
   @Get()
   @ApiOperation({ summary: 'Get business app settings' })
-  async get(@CurrentUser('sub') userId: string) {
-    const settings = await this.settingsService.getForCurrentUser(userId);
+  async get(@CurrentUser('sub') userId: string, @Headers('x-business-id') businessId?: string) {
+    const settings = await this.settingsService.getForCurrentUser(userId, businessId);
     return {
       success: true,
       message: 'Settings retrieved successfully',
@@ -25,8 +25,8 @@ export class SettingsController {
 
   @Patch()
   @ApiOperation({ summary: 'Update business app settings' })
-  async update(@CurrentUser('sub') userId: string, @Body() dto: UpdateSettingsDto) {
-    const settings = await this.settingsService.updateForCurrentUser(userId, dto);
+  async update(@CurrentUser('sub') userId: string, @Body() dto: UpdateSettingsDto, @Headers('x-business-id') businessId?: string) {
+    const settings = await this.settingsService.updateForCurrentUser(userId, dto, businessId);
     return {
       success: true,
       message: 'Settings updated successfully',

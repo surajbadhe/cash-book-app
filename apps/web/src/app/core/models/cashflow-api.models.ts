@@ -1,6 +1,16 @@
 import { ApiResponse } from './auth.models';
 import { CashTransaction, TransactionType } from './cashflow.models';
 
+export type BusinessAccessRole = 'owner' | 'manager' | 'employee';
+
+export interface BusinessMember {
+  userId: string;
+  email: string;
+  role: BusinessAccessRole;
+  isActive: boolean;
+  joinedAt: string;
+}
+
 export interface BusinessProfile {
   id?: string;
   _id?: string;
@@ -11,6 +21,16 @@ export interface BusinessProfile {
   timezone: string;
   phone?: string;
   address?: string;
+  members?: BusinessMember[];
+  accessRole?: BusinessAccessRole;
+}
+
+export interface BusinessInvitePreview {
+  businessId: string;
+  businessName: string;
+  email: string;
+  role: BusinessAccessRole;
+  expiresAt: string;
 }
 
 export interface CategoryItem {
@@ -54,6 +74,19 @@ export interface TransactionListResponse {
     totalOut: number;
     net: number;
   };
+}
+
+export interface TransactionImportResponse {
+  createdCount: number;
+  skippedCount: number;
+  categoriesCreated: number;
+  errors: Array<{
+    rowNumber: number;
+    message: string;
+    date: string;
+    amount: string;
+    category: string;
+  }>;
 }
 
 export interface DashboardReportResponse {

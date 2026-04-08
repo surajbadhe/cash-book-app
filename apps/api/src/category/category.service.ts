@@ -36,8 +36,8 @@ export class CategoryService {
     private readonly businessService: BusinessService,
   ) {}
 
-  async listForCurrentUser(userId: string, query: ListCategoriesDto): Promise<Category[]> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async listForCurrentUser(userId: string, query: ListCategoriesDto, businessId?: string): Promise<Category[]> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const filters: Record<string, unknown> = { businessId: business.id };
 
     if (query.type) {
@@ -50,8 +50,8 @@ export class CategoryService {
     return this.categoryModel.find(filters).sort({ type: 1, sortOrder: 1, name: 1 }).exec();
   }
 
-  async createForCurrentUser(userId: string, dto: CreateCategoryDto): Promise<Category> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async createForCurrentUser(userId: string, dto: CreateCategoryDto, businessId?: string): Promise<Category> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const existing = await this.categoryModel
       .findOne({ businessId: business.id, type: dto.type, name: dto.name.trim() })
       .exec();
@@ -72,8 +72,8 @@ export class CategoryService {
     return category.save();
   }
 
-  async updateForCurrentUser(userId: string, id: string, dto: UpdateCategoryDto): Promise<Category> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async updateForCurrentUser(userId: string, id: string, dto: UpdateCategoryDto, businessId?: string): Promise<Category> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const category = await this.categoryModel.findById(id).exec();
 
     if (!category) {
@@ -87,8 +87,8 @@ export class CategoryService {
     return category.save();
   }
 
-  async deactivateForCurrentUser(userId: string, id: string): Promise<Category> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async deactivateForCurrentUser(userId: string, id: string, businessId?: string): Promise<Category> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const category = await this.categoryModel.findById(id).exec();
 
     if (!category) {
@@ -102,8 +102,8 @@ export class CategoryService {
     return category.save();
   }
 
-  async seedDefaultsForCurrentUser(userId: string): Promise<Category[]> {
-    const business = await this.businessService.findByOwnerId(userId);
+  async seedDefaultsForCurrentUser(userId: string, businessId?: string): Promise<Category[]> {
+    const business = await this.businessService.resolveForUser(userId, businessId);
     const existing = await this.categoryModel.find({ businessId: business.id }).exec();
     const existingKeys = new Set(existing.map((category) => `${category.type}:${category.name.toLowerCase()}`));
 
@@ -135,5 +135,49 @@ export class CategoryService {
       throw new NotFoundException('Category not found');
     }
     return category;
+  }
+
+  async findOrCreateForBusiness(
+    businessId: string,
+    name: string,
+    type: CategoryType,
+  ): Promise<Category> {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      throw new BadRequestException('Category name is required');
+    }
+
+    const existing = await this.categoryModel
+      .findOne({
+        businessId,
+        type,
+        name: trimmedName,
+      })
+      .exec();
+
+    if (existing) {
+      if (!existing.isActive) {
+        existing.isActive = true;
+        return existing.save();
+      }
+
+      return existing;
+    }
+
+    const lastCategory = await this.categoryModel
+      .findOne({ businessId, type })
+      .sort({ sortOrder: -1, createdAt: -1 })
+      .exec();
+
+    const category = new this.categoryModel({
+      businessId,
+      name: trimmedName,
+      type,
+      isDefault: false,
+      isActive: true,
+      sortOrder: (lastCategory?.sortOrder ?? 0) + 1,
+    });
+
+    return category.save();
   }
 }
