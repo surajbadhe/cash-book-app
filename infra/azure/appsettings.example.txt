@@ -1,0 +1,17 @@
+NODE_ENV=production
+PORT=8080
+MONGODB_URI=<mongodb-atlas-connection-string>
+JWT_SECRET=<strong-random-secret>
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+CLIENT_URL=<your-static-web-app-url>
+CORS_ORIGIN=<your-static-web-app-url>
+BCRYPT_ROUNDS=10
+RATE_LIMIT_TTL=60
+RATE_LIMIT_MAX=100
+GOOGLE_CLIENT_ID=<optional>
+GOOGLE_CLIENT_SECRET=<optional>
+GOOGLE_CALLBACK_URL=<https://your-api.azurewebsites.net/api/auth/google/callback>
+GITHUB_CLIENT_ID=<optional>
+GITHUB_CLIENT_SECRET=<optional>
+GITHUB_CALLBACK_URL=<https://your-api.azurewebsites.net/api/auth/github/callback>
