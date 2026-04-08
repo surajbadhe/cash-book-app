@@ -1,39 +1,36 @@
-# cash-flow
+# 📊 Cash Flow – Personal Finance Management App
 
-A production-ready full-stack application with **NestJS**, **MongoDB**, **Angular 21**, JWT authentication, OAuth integration, and Docker support. Built with **pnpm workspaces** for efficient monorepo management.
+A modern, full-stack cash flow tracking application built to help users manage income, expenses, and financial insights with ease.
 
-## 🚀 Features
+## ✨ Core Features
 
-### Backend (NestJS)
-- ✅ MongoDB with Mongoose ODM
-- ✅ JWT-based authentication with refresh token rotation
-- ✅ OAuth integration (Google + GitHub)
-- ✅ Role-based access control (RBAC)
-- ✅ HttpOnly cookie authentication
-- ✅ Config module with environment variables
-- ✅ Global exception filter
-- ✅ Request/response interceptors
-- ✅ Logging with Pino
-- ✅ Swagger API documentation
-- ✅ Rate limiting
-- ✅ Request validation with class-validator
-- ✅ Security headers (Helmet)
-- ✅ CORS configuration
-- ✅ Docker support
+- **Transaction Management** – Record cash-in (income) and cash-out (expenses) transactions with categorization
+- **Category Management** – Create, organize, and manage custom transaction categories directly from the UI
+- **Dashboard** – Real-time overview of income, expenses, and net profit/loss
+- **Advanced Reports** – Visual category-wise breakdowns for both income and expenses with period filters (daily, weekly, monthly)
+- **Multi-Period Analytics** – Filter and compare financial data across different time periods
+- **User Authentication** – Secure JWT-based auth with OAuth support (Google, GitHub)
+- **Offline-First Sync** – Works seamlessly with local storage fallback; syncs to cloud when online
+- **Business Multi-Tenancy** – Support for multiple business accounts per user
+- **Responsive Design** – Fully optimized for desktop and mobile devices
 
-### Frontend (Angular 21)
-- ✅ Standalone components architecture
-- ✅ Functional guards and interceptors
-- ✅ Auth module with login/register
-- ✅ OAuth login integration (Google + GitHub)
-- ✅ HTTP interceptor for JWT
-- ✅ Auth guard + Role guard
-- ✅ Token refresh mechanism
-- ✅ HttpOnly cookie handling
-- ✅ Lazy-loaded routes
-- ✅ Environment-based configuration
-- ✅ Responsive UI with modern design
-- ✅ Docker + Nginx support
+## 🛠️ Tech Stack
+
+**Frontend:**
+- Angular 21 (standalone components, reactive forms)
+- TypeScript, SCSS
+- RxJS for reactive state management
+
+**Backend:**
+- NestJS (Node.js framework)
+- MongoDB (Mongoose ODM)
+- Class-validator for DTO validation
+- JWT + Passport strategies for authentication
+
+**Infrastructure:**
+- Docker support (Dockerfile included for both apps)
+- Docker Compose for local development
+- pnpm workspaces for monorepo management
 
 ## 📁 Project Structure
 
