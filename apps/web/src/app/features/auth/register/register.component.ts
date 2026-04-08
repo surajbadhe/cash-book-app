@@ -67,8 +67,4 @@ export class RegisterComponent {
   loginWithGoogle(): void {
     this.authService.loginWithOAuth('google');
   }
-
-  loginWithGitHub(): void {
-    this.authService.loginWithOAuth('github');
-  }
 }
