@@ -11,10 +11,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private configService: ConfigService,
     private authService: AuthService,
   ) {
+    const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
+    const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
+    const callbackURL = configService.get<string>('GOOGLE_CALLBACK_URL');
+
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID'),
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET'),
-      callbackURL: configService.get<string>('GOOGLE_CALLBACK_URL'),
+      clientID: clientID || 'disabled-google-client-id',
+      clientSecret: clientSecret || 'disabled-google-client-secret',
+      callbackURL: callbackURL || 'http://localhost:3000/api/auth/google/callback',
       scope: ['openid', 'email', 'profile'],
       userProfileURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
     });
