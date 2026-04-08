@@ -14,12 +14,14 @@ import {
   RefreshToken,
   RefreshTokenSchema,
 } from '../user/schemas/refresh-token.schema';
+import { User, UserSchema } from '../user/schemas/user.schema';
 
 @Module({
   imports: [
     UserModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
     ]),
     JwtModule.registerAsync({
