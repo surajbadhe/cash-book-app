@@ -22,6 +22,7 @@ jobs:
     env:
       API_APP_PATH: apps/api
       PACKAGE_PATH: ./.azure/api-package
+      PACKAGE_ZIP: ./.azure/api-package.zip
 
     steps:
       - name: Checkout
@@ -45,11 +46,13 @@ jobs:
         shell: bash
         run: |
           rm -rf "${PACKAGE_PATH}"
+          rm -f "${PACKAGE_ZIP}"
           mkdir -p "${PACKAGE_PATH}"
           cp -r "${API_APP_PATH}/dist" "${PACKAGE_PATH}/dist"
           cp "${API_APP_PATH}/package.json" "${PACKAGE_PATH}/package.json"
           pushd "${PACKAGE_PATH}"
           npm install --omit=dev
+          zip -r "../api-package.zip" .
           popd
 
       - name: Deploy to Azure Web App
@@ -57,4 +60,4 @@ jobs:
         with:
           app-name: ${{ secrets.AZURE_API_APP_NAME }}
           publish-profile: ${{ secrets.AZURE_API_PUBLISH_PROFILE }}
-          package: ${{ env.PACKAGE_PATH }}
+          package: ${{ env.PACKAGE_ZIP }}
