@@ -92,6 +92,12 @@
     overflow-y: auto;
   }
 
+    .nav-divider {
+      height: 1px;
+      margin: 8px 10px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
   .nav-item {
     display: flex;
     align-items: center;
@@ -290,6 +296,44 @@
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+}
+
+.global-toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1100;
+  animation: slideIn 0.25s ease-out;
+
+  .global-toast-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 250px;
+    max-width: min(calc(100vw - 32px), 360px);
+    padding: 14px 16px;
+    border-radius: 10px;
+    color: #fff;
+    background: #10b981;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  &.error .global-toast-inner {
+    background: #ef4444;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============ BOTTOM NAV ============ */

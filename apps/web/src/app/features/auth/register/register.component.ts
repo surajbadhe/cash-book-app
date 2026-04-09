@@ -35,7 +35,10 @@ export class RegisterComponent {
       validators: this.passwordMatchValidator,
     });
 
-    this.inviteToken = this.route.snapshot.queryParamMap.get('inviteToken') || '';
+    this.inviteToken = this.route.snapshot.queryParamMap.get('inviteToken') || this.authService.getPendingInviteToken();
+    if (this.inviteToken) {
+      this.authService.setPendingInviteToken(this.inviteToken);
+    }
   }
 
   passwordMatchValidator(group: FormGroup): { [key: string]: boolean } | null {
@@ -56,8 +59,9 @@ export class RegisterComponent {
 
     this.authService.register({ email, password }).subscribe({
       next: () => {
-        if (this.inviteToken) {
-          this.router.navigate(['/invite/accept'], { queryParams: { token: this.inviteToken } });
+        const inviteToken = this.inviteToken || this.authService.getPendingInviteToken();
+        if (inviteToken) {
+          this.router.navigate(['/invite/accept'], { queryParams: { token: inviteToken } });
         } else {
           this.router.navigate(['/dashboard']);
         }
@@ -74,7 +78,7 @@ export class RegisterComponent {
 
   loginWithGoogle(): void {
     if (this.inviteToken) {
-      localStorage.setItem('pendingInviteToken', this.inviteToken);
+      this.authService.setPendingInviteToken(this.inviteToken);
     }
     this.authService.loginWithOAuth('google');
   }

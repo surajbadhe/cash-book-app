@@ -194,6 +194,25 @@ export class AuthService {
     window.location.href = environment.oauth[`${provider}Url`];
   }
 
+  setPendingInviteToken(token: string | null): void {
+    if (token?.trim()) {
+      localStorage.setItem('pendingInviteToken', token.trim());
+      return;
+    }
+
+    localStorage.removeItem('pendingInviteToken');
+  }
+
+  getPendingInviteToken(): string {
+    return localStorage.getItem('pendingInviteToken') || '';
+  }
+
+  consumePendingInviteToken(): string {
+    const token = this.getPendingInviteToken();
+    localStorage.removeItem('pendingInviteToken');
+    return token;
+  }
+
   /**
    * Handle OAuth callback
    */
@@ -204,9 +223,8 @@ export class AuthService {
     // Fetch user details
     this.getCurrentUser().subscribe({
       next: () => {
-        const inviteToken = localStorage.getItem('pendingInviteToken');
+        const inviteToken = this.consumePendingInviteToken();
         if (inviteToken) {
-          localStorage.removeItem('pendingInviteToken');
           this.router.navigate(['/invite/accept'], {
             queryParams: { token: inviteToken },
           });

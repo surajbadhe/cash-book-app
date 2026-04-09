@@ -3,6 +3,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AsyncPipe, TitleCasePipe } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 import { BusinessContextService } from '../../../core/services/business-context.service';
+import { ToastService } from '../../../core/services/toast.service';
 
 @Component({
   selector: 'app-shell',
@@ -14,9 +15,11 @@ import { BusinessContextService } from '../../../core/services/business-context.
 export class ShellComponent {
   private authService = inject(AuthService);
   private businessContext = inject(BusinessContextService);
+  private toastService = inject(ToastService);
   user$ = this.authService.currentUser$;
   businesses$ = this.businessContext.businesses$;
   currentBusiness$ = this.businessContext.currentBusiness$;
+  toast$ = this.toastService.toast$;
   sidebarOpen = signal(false);
 
   constructor() {

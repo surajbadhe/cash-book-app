@@ -45,6 +45,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   currencyCode = 'INR';
   loading = true;
+  noBusinessAccess = false;
   private activeBusinessId: string | null = null;
 
   ngOnInit(): void {
@@ -120,23 +121,33 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.businessContext
           .ensureBusinessReady(businessName)
         .pipe(
-          switchMap(() =>
-            forkJoin({
-              transactions: this.cashflowApiService
-                .listTransactions({ page: 1, limit: 5 })
-                .pipe(catchError(() => of({ items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
-              dashboard: this.cashflowApiService
-                .getDashboardReport(new Date().toISOString().split('T')[0])
-                .pipe(catchError(() => of(null))),
-              settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
-            })
+          switchMap((business) =>
+            business
+              ? forkJoin({
+                  business: of(business),
+                  transactions: this.cashflowApiService
+                    .listTransactions({ page: 1, limit: 5 })
+                    .pipe(catchError(() => of({ items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                  dashboard: this.cashflowApiService
+                    .getDashboardReport(new Date().toISOString().split('T')[0])
+                    .pipe(catchError(() => of(null))),
+                  settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
+                })
+              : of({ business: null, transactions: { items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, dashboard: null, settings: null })
           )
         )
         .subscribe({
-          next: ({ transactions, dashboard, settings }) => {
+          next: ({ business, transactions, dashboard, settings }) => {
+            this.noBusinessAccess = !business;
             this.recentTransactions = transactions.items.map(mapTransactionItemToCashTransaction).slice(0, 5);
             this.currencyCode = settings?.currency || 'INR';
-            this.applyDashboard(dashboard);
+            if (business) {
+              this.applyDashboard(dashboard);
+            } else {
+              this.dailySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+              this.weeklySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+              this.monthlySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+            }
             this.loading = false;
           },
           error: () => {
@@ -148,6 +159,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadLocal(): void {
+    this.noBusinessAccess = false;
     this.subs.add(
       this.cashflowService.transactions$.subscribe((txns) => {
         const sorted = [...txns].sort(

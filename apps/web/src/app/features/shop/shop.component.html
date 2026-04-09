@@ -1,0 +1,73 @@
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Shops</h1>
+    <p class="page-sub">Create and manage your shop profiles</p>
+  </div>
+
+  <!-- Shop Selector -->
+  <section class="card">
+    <div class="section-header-row">
+      <div>
+        <h2 class="section-title">Your Shops</h2>
+        <p class="section-desc">Switch between shops or create a new one.</p>
+      </div>
+      @if (!isCreating) {
+        <button class="btn-primary btn-small" type="button" (click)="startCreating()">+ New Shop</button>
+      }
+    </div>
+
+    @if (businesses.length > 0) {
+      <div class="shop-tabs">
+        @for (b of businesses; track b.id) {
+          <button
+            type="button"
+            class="shop-chip"
+            [class.active]="!isCreating && currentBusiness?.id === b.id"
+            (click)="switchShop(b.id || '')"
+          >
+            {{ b.name }}
+            <span class="role-badge">{{ b.accessRole || 'owner' }}</span>
+          </button>
+        }
+      </div>
+    } @else if (!isCreating) {
+      <p class="section-desc empty-note">No shops yet. Create your first shop below.</p>
+    }
+  </section>
+
+  <!-- Edit / Create Form -->
+  @if (isCreating || currentBusiness) {
+    <section class="card">
+      <h2 class="section-title">{{ isCreating ? 'New Shop' : 'Edit Shop' }}</h2>
+
+      <form [formGroup]="shopForm" (ngSubmit)="saveShop()" class="stack-form">
+        <label>
+          <span>Shop name <span class="required">*</span></span>
+          <input formControlName="name" placeholder="e.g. Main Branch" />
+        </label>
+        @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
+          <p class="err">Shop name must be at least 2 characters.</p>
+        }
+
+        <label>
+          <span>Phone</span>
+          <input formControlName="phone" placeholder="Optional" />
+        </label>
+
+        <label>
+          <span>Address</span>
+          <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
+        </label>
+
+        <div class="form-actions">
+          <button class="btn-primary" type="submit" [disabled]="saving">
+            {{ saving ? (isCreating ? 'Creating…' : 'Saving…') : (isCreating ? 'Create Shop' : 'Save Changes') }}
+          </button>
+          @if (isCreating) {
+            <button class="btn-secondary" type="button" (click)="cancelCreating()">Cancel</button>
+          }
+        </div>
+      </form>
+    </section>
+  }
+</div>

@@ -29,7 +29,10 @@ export class LoginComponent {
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
 
-    this.inviteToken = this.route.snapshot.queryParamMap.get('inviteToken') || '';
+    this.inviteToken = this.route.snapshot.queryParamMap.get('inviteToken') || this.authService.getPendingInviteToken();
+    if (this.inviteToken) {
+      this.authService.setPendingInviteToken(this.inviteToken);
+    }
   }
 
   onSubmit(): void {
@@ -42,8 +45,9 @@ export class LoginComponent {
 
     this.authService.login(this.loginForm.value).subscribe({
       next: () => {
-        if (this.inviteToken) {
-          this.router.navigate(['/invite/accept'], { queryParams: { token: this.inviteToken } });
+        const inviteToken = this.inviteToken || this.authService.getPendingInviteToken();
+        if (inviteToken) {
+          this.router.navigate(['/invite/accept'], { queryParams: { token: inviteToken } });
         } else {
           this.router.navigate(['/dashboard']);
         }
@@ -60,7 +64,7 @@ export class LoginComponent {
 
   loginWithGoogle(): void {
     if (this.inviteToken) {
-      localStorage.setItem('pendingInviteToken', this.inviteToken);
+      this.authService.setPendingInviteToken(this.inviteToken);
     }
     this.authService.loginWithOAuth('google');
   }

@@ -81,6 +81,13 @@
         </div>
       }
     </div>
+  } @else if (noBusinessAccess) {
+    <div class="card">
+      <div class="empty-state">
+        <p>No shop available yet.</p>
+        <p>Create a shop in Settings or accept an invite to start seeing reports.</p>
+      </div>
+    </div>
   } @else {
     <!-- P&L Banner -->
     <div class="pl-banner" [class.positive]="net >= 0" [class.negative]="net < 0">

@@ -46,6 +46,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   currencyCode = 'INR';
   loading = false;
+  noBusinessAccess = false;
   showForm = false;
   formSuccess = false;
   showCategoryForm = false;
@@ -363,11 +364,30 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   toggleForm(): void {
+    if (this.noBusinessAccess) {
+      this.showToast('Create a shop or accept an invite before adding transactions.', 'error');
+      return;
+    }
+
     this.showForm = !this.showForm;
 
     if (!this.showForm) {
       this.resetEntryForm();
     }
+  }
+
+  openAddModal(): void {
+    if (this.noBusinessAccess) {
+      this.showToast('Create a shop or accept an invite before adding transactions.', 'error');
+      return;
+    }
+    this.showForm = true;
+    this.resetEntryForm();
+  }
+
+  closeAddModal(): void {
+    this.showForm = false;
+    this.resetEntryForm();
   }
 
   setFilter(f: 'all' | 'cash-in' | 'cash-out'): void {
@@ -605,6 +625,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
             err?.status === 401 || err?.status === 403 || this.dataMode !== 'cloud';
           this.importIssueRows = [];
           this.showImportDetailsDialog = false;
+          this.importing = false;
+          input.value = '';
         },
         complete: () => {
           this.importing = false;
@@ -682,7 +704,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.categoryForm.reset({ name: '', type });
   }
 
-  submit(): void {
+  submit(closeAfterSave: boolean = false): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -709,7 +731,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           })
           .subscribe({
             next: () => {
-              this.resetForm();
+              this.showToast('Transaction created successfully!', 'success');
+              if (closeAfterSave) {
+                this.closeAddModal();
+              } else {
+                this.showFormSuccess();
+              }
               this.loadRemote();
             },
             error: (err) => {
@@ -728,7 +755,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         timestamp: new Date(v.timestamp).toISOString(),
         note: v.note,
       });
-      this.resetForm();
+      this.showToast('Transaction created successfully!', 'success');
+      if (closeAfterSave) {
+        this.closeAddModal();
+      } else {
+        this.showFormSuccess();
+      }
     }
   }
 
@@ -841,19 +873,23 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       this.businessContext
         .ensureBusinessReady(name)
         .pipe(
-          switchMap(() =>
-            forkJoin({
-              categories: this.cashflowApiService.getCategories().pipe(catchError(() => of([]))),
-              transactions: this.cashflowApiService
-                .listTransactions(this.buildTransactionQuery())
-                .pipe(catchError(() => of({ items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
-              settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
-            })
+          switchMap((business) =>
+            business
+              ? forkJoin({
+                  business: of(business),
+                  categories: this.cashflowApiService.getCategories().pipe(catchError(() => of([]))),
+                  transactions: this.cashflowApiService
+                    .listTransactions(this.buildTransactionQuery())
+                    .pipe(catchError(() => of({ items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                  settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
+                })
+              : of({ business: null, categories: [], transactions: { items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, settings: null })
           )
         )
         .subscribe({
-          next: ({ categories, transactions, settings }) => {
+          next: ({ business, categories, transactions, settings }) => {
             this.showSessionRecoveryActions = false;
+            this.noBusinessAccess = !business;
             this.remoteCategories = categories;
             this.transactions = transactions.items.map(mapTransactionItemToCashTransaction);
             this.currentPage = transactions.page;
@@ -929,6 +965,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   private loadLocal(): void {
+    this.noBusinessAccess = false;
     this.subs.add(
       this.cashflowService.transactions$.subscribe((txns) => {
         this.transactions = [...txns].sort(
@@ -993,6 +1030,14 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.categorySuccess = false;
     this.resetEntryForm();
     this.showToast('Transaction created successfully!', 'success');
+  }
+
+  private showFormSuccess(): void {
+    this.formSuccess = true;
+    this.resetEntryForm();
+    setTimeout(() => {
+      this.formSuccess = false;
+    }, 2000);
   }
 
   private resetEntryForm(): void {

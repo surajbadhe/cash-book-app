@@ -34,31 +34,15 @@ export class BusinessContextService {
     );
   }
 
-  ensureBusinessReady(defaultBusinessName: string): Observable<BusinessProfile> {
+  ensureBusinessReady(_defaultBusinessName: string): Observable<BusinessProfile | null> {
     return this.refreshBusinesses().pipe(
       switchMap((businesses) => {
         if (businesses.length > 0) {
           return of(this.currentBusinessSubject.value || businesses[0]);
         }
 
-        return this.api
-          .createBusiness({
-            name: defaultBusinessName,
-            type: 'restaurant',
-            currency: 'INR',
-            timezone: 'Asia/Kolkata',
-          })
-          .pipe(
-            switchMap((created) =>
-              this.api.seedDefaultCategories().pipe(
-                tap(() => {
-                  this.businessesSubject.next([created]);
-                  this.setCurrentBusiness(created);
-                }),
-                switchMap(() => of(created)),
-              ),
-            ),
-          );
+        this.setCurrentBusiness(null);
+        return of(null);
       }),
     );
   }

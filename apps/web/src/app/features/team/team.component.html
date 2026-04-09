@@ -1,0 +1,115 @@
+<div class="page">
+  <div class="page-header">
+    <h1 class="page-title">Team</h1>
+    <p class="page-sub">Invite people and manage their access</p>
+  </div>
+
+  @if (!currentBusiness) {
+    <section class="card empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+      <p>No shop selected. <a routerLink="/shop">Create or select a shop</a> first.</p>
+    </section>
+  } @else {
+    <!-- Invite Form -->
+    <section class="card">
+      <h2 class="section-title">Invite a Member</h2>
+      <p class="section-desc">Send an invite link by email. The recipient must accept before they appear here.</p>
+      <form [formGroup]="memberForm" (ngSubmit)="sendInvite()" class="invite-form">
+        <div class="invite-fields">
+          <label class="grow">
+            <span>Email address</span>
+            <input formControlName="email" type="email" placeholder="colleague@example.com" />
+            @if (memberForm.controls.email.touched && memberForm.controls.email.invalid) {
+              <span class="err">Enter a valid email address.</span>
+            }
+          </label>
+          <label>
+            <span>Role</span>
+            <select formControlName="role">
+              <option value="employee">Employee</option>
+              <option value="manager">Manager</option>
+            </select>
+          </label>
+        </div>
+        <button class="btn-primary" type="submit" [disabled]="sendingInvite">
+          {{ sendingInvite ? 'Sending…' : 'Send Invite' }}
+        </button>
+      </form>
+    </section>
+
+    <!-- Members List -->
+    <section class="card">
+      <h2 class="section-title">Current Members</h2>
+
+      @if (loadingMembers) {
+        <p class="section-desc">Loading members…</p>
+      } @else if (members.length === 0) {
+        <p class="section-desc">No active members yet. Invite someone to get started.</p>
+      } @else {
+        <div class="member-table">
+          <div class="member-header">
+            <span>Member</span>
+            <span>Role</span>
+            <span>Actions</span>
+          </div>
+          @for (member of members; track member.userId) {
+            <div class="member-row">
+              <div class="member-info">
+                <div class="member-avatar">{{ member.email[0].toUpperCase() }}</div>
+                <div>
+                  <p class="member-email">{{ member.email }}</p>
+                  <p class="member-joined">Joined {{ member.joinedAt | date:'mediumDate' }}</p>
+                </div>
+              </div>
+
+              <div class="role-cell">
+                @if (member.role === 'owner') {
+                  <span class="role-badge owner">Owner</span>
+                } @else {
+                  <select
+                    class="role-select"
+                    [value]="member.role"
+                    [disabled]="updatingRoleIds.has(member.userId)"
+                    (change)="changeRole(member, $any($event.target).value)"
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                  @if (updatingRoleIds.has(member.userId)) {
+                    <span class="updating-label">Updating…</span>
+                  }
+                }
+              </div>
+
+              <div class="action-cell">
+                @if (member.role !== 'owner') {
+                  <button
+                    class="btn-remove"
+                    type="button"
+                    [disabled]="removingMemberIds.has(member.userId)"
+                    (click)="removeMember(member)"
+                    title="Remove from shop"
+                  >
+                    @if (removingMemberIds.has(member.userId)) {
+                      Removing…
+                    } @else {
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                      </svg>
+                      Remove
+                    }
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

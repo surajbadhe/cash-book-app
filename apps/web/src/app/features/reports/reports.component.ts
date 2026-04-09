@@ -41,6 +41,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
   dataMode: 'cloud' | 'local' = 'local';
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   loading = true;
+  noBusinessAccess = false;
   private activeBusinessId: string | null = null;
 
   period: 'daily' | 'weekly' | 'monthly' | 'custom' = 'monthly';
@@ -130,31 +131,35 @@ export class ReportsComponent implements OnInit, OnDestroy {
       this.businessContext
         .ensureBusinessReady(name)
         .pipe(
-          switchMap(() =>
-            forkJoin({
-              transactions: this.cashflowApiService
-                .listTransactions({
-                  page: 1,
-                  limit: 500,
-                  from: customRange?.from,
-                  to: customRange?.to,
+          switchMap((business) =>
+            business
+              ? forkJoin({
+                  business: of(business),
+                  transactions: this.cashflowApiService
+                    .listTransactions({
+                      page: 1,
+                      limit: 500,
+                      from: customRange?.from,
+                      to: customRange?.to,
+                    })
+                    .pipe(catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                  dashboard:
+                    this.period === 'custom'
+                      ? of(null)
+                      : this.cashflowApiService
+                          .getDashboardReport(new Date().toISOString().split('T')[0])
+                          .pipe(catchError(() => of(null))),
+                  settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
                 })
-                .pipe(catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
-              dashboard:
-                this.period === 'custom'
-                  ? of(null)
-                  : this.cashflowApiService
-                      .getDashboardReport(new Date().toISOString().split('T')[0])
-                      .pipe(catchError(() => of(null))),
-              settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
-            })
+              : of({ business: null, transactions: { items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, dashboard: null, settings: null })
           )
         )
         .subscribe({
-          next: ({ transactions, dashboard, settings }) => {
+          next: ({ business, transactions, dashboard, settings }) => {
+            this.noBusinessAccess = !business;
             this.currencyCode = settings?.currency || 'INR';
             const txns = transactions.items.map(mapTransactionItemToCashTransaction);
-            if (dashboard) {
+            if (business && dashboard) {
               this.applyRemote(dashboard, txns);
             } else {
               this.applyLocal(txns);
@@ -170,6 +175,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
   }
 
   private loadLocal(): void {
+    this.noBusinessAccess = false;
     this.subs.add(
       this.cashflowService.transactions$.subscribe((txns) => {
         this.applyLocal(txns);

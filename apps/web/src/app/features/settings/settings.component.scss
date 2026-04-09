@@ -200,6 +200,42 @@
   }
 }
 
+/* Nav Cards */
+.nav-cards {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.nav-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s, transform 0.1s;
+
+  &:hover { box-shadow: 0 4px 12px rgba(99,102,241,0.12); transform: translateY(-1px); }
+
+  .nav-card-icon {
+    width: 44px; height: 44px;
+    background: #eef2ff; color: #6366f1;
+    border-radius: 12px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .nav-card-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 2px; }
+  .nav-card-desc  { font-size: 13px; color: #64748b; margin: 0; }
+
+  .nav-card-arrow { margin-left: auto; flex-shrink: 0; color: #cbd5e1; }
+
+  > div:nth-child(2) { flex: 1; min-width: 0; }
+}
+
 /* Lock */
 .lock-status {
   display: flex;

@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { BusinessContextService } from '../../core/services/business-context.service';
 import { CashflowApiService } from '../../core/services/cashflow-api.service';
 import { BusinessInvitePreview } from '../../core/models/cashflow-api.models';
+import { ToastService } from '../../core/services/toast.service';
 
 @Component({
   selector: 'app-accept-invite',
@@ -31,7 +32,12 @@ import { BusinessInvitePreview } from '../../core/models/cashflow-api.models';
             </div>
           } @else {
             @if (emailMismatch) {
-              <p class="error">You are logged in as a different email. Please login with {{ invite.email }}.</p>
+              <p class="error">You are logged in as a different account. This invite is for <strong>{{ invite.email }}</strong>.</p>
+              <div class="actions">
+                <button type="button" class="btn" [disabled]="switchingAccount" (click)="switchAccount()">
+                  {{ switchingAccount ? 'Signing out…' : 'Sign out &amp; continue with invited email' }}
+                </button>
+              </div>
             } @else {
               <div class="actions">
                 <button type="button" class="btn" [disabled]="accepting" (click)="acceptInvite()">
@@ -63,9 +69,11 @@ export class AcceptInviteComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly api = inject(CashflowApiService);
   private readonly businessContext = inject(BusinessContextService);
+  private readonly toastService = inject(ToastService);
 
   loading = true;
   accepting = false;
+  switchingAccount = false;
   errorMessage = '';
   token = '';
   invite: BusinessInvitePreview | null = null;
@@ -80,31 +88,49 @@ export class AcceptInviteComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.token = this.route.snapshot.queryParamMap.get('token') || '';
+    this.token = this.route.snapshot.queryParamMap.get('token') || this.authService.getPendingInviteToken();
     if (!this.token) {
       this.errorMessage = 'Invite token is missing.';
       this.loading = false;
       return;
     }
 
+    this.authService.setPendingInviteToken(this.token);
+
     this.api.getInvitePreview(this.token).subscribe({
       next: (preview) => {
         this.invite = preview;
         this.loading = false;
+        this.tryAutoAccept();
       },
       error: (err) => {
         this.errorMessage = err?.error?.message || 'Invite is invalid or expired.';
         this.loading = false;
       },
     });
+
+    this.authService.currentUser$.subscribe(() => {
+      this.tryAutoAccept();
+    });
   }
 
   goToLogin(): void {
+    this.authService.setPendingInviteToken(this.token);
     this.router.navigate(['/login'], { queryParams: { inviteToken: this.token } });
   }
 
   goToRegister(): void {
+    this.authService.setPendingInviteToken(this.token);
     this.router.navigate(['/register'], { queryParams: { inviteToken: this.token } });
+  }
+
+  switchAccount(): void {
+    this.switchingAccount = true;
+    this.authService.setPendingInviteToken(this.token);
+    this.authService.logout().subscribe({
+      next: () => this.router.navigate(['/login'], { queryParams: { inviteToken: this.token } }),
+      error: () => this.router.navigate(['/login'], { queryParams: { inviteToken: this.token } }),
+    });
   }
 
   acceptInvite(): void {
@@ -117,15 +143,18 @@ export class AcceptInviteComponent implements OnInit {
 
     this.api.acceptBusinessInvite(this.token).subscribe({
       next: (result) => {
+        this.authService.consumePendingInviteToken();
         this.businessContext.refreshBusinesses().subscribe({
           next: (businesses) => {
             const selected = businesses.find((item) => item.id === result.businessId);
             if (selected) {
               this.businessContext.setCurrentBusiness(selected);
             }
+            this.toastService.success(`You joined ${result.businessName} as ${result.role}.`);
             this.router.navigate(['/dashboard']);
           },
           error: () => {
+            this.toastService.success(`You joined ${result.businessName} as ${result.role}.`);
             this.router.navigate(['/dashboard']);
           },
         });
@@ -135,5 +164,13 @@ export class AcceptInviteComponent implements OnInit {
         this.accepting = false;
       },
     });
+  }
+
+  private tryAutoAccept(): void {
+    if (!this.invite || !this.isAuthenticated || this.emailMismatch || this.accepting) {
+      return;
+    }
+
+    this.acceptInvite();
   }
 }

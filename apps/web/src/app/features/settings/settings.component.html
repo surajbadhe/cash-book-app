@@ -16,124 +16,48 @@
         }
       </div>
     </div>
-    <button class="btn-danger" (click)="logout()">
+    <button class="btn-danger" (click)="logout()" [disabled]="loggingOut">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
       </svg>
-      Sign out
+      {{ loggingOut ? 'Signing out...' : 'Sign out' }}
     </button>
   </section>
 
-  <!-- Shops and Employees Management -->
-  <section class="card">
-    <div class="section-header-row">
+  <!-- Quick navigation cards -->
+  <div class="nav-cards">
+    <a routerLink="/shop" class="nav-card">
+      <div class="nav-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
       <div>
-        <h2 class="section-title">Shops</h2>
-        <p class="section-desc">Create multiple shops and switch which one is active.</p>
+        <p class="nav-card-title">Shops</p>
+        <p class="nav-card-desc">Create and manage your shop profiles</p>
       </div>
-      <button class="btn-primary btn-small" type="button" (click)="createNewShop()">New Shop</button>
-    </div>
-
-    @if (businesses.length > 0) {
-      <div class="shop-tabs">
-        @for (business of businesses; track business.id) {
-          <button
-            type="button"
-            class="shop-chip"
-            [class.active]="currentBusiness?.id === business.id"
-            (click)="switchShop(business.id || '')"
-          >
-            {{ business.name }}
-            <span>{{ business.accessRole || 'owner' }}</span>
-          </button>
-        }
+      <svg class="nav-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+    <a routerLink="/team" class="nav-card">
+      <div class="nav-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
       </div>
-    }
-
-    <form [formGroup]="shopForm" (ngSubmit)="saveShop()" class="stack-form">
-      <label>
-        <span>Shop name</span>
-        <input formControlName="name" placeholder="Main Branch" />
-      </label>
-      <label>
-        <span>Phone</span>
-        <input formControlName="phone" placeholder="Optional" />
-      </label>
-      <label>
-        <span>Address</span>
-        <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
-      </label>
-
-      @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
-        <p class="err">Shop name must be at least 2 characters.</p>
-      }
-      @if (shopError) {
-        <p class="err">{{ shopError }}</p>
-      }
-      @if (shopSaved) {
-        <p class="success-msg">Shop saved successfully.</p>
-      }
-
-      <button class="btn-primary" type="submit">{{ currentBusiness?.id ? 'Save Shop' : 'Create Shop' }}</button>
-    </form>
-  </section>
-
-  <section class="card">
-    <h2 class="section-title">Employees</h2>
-    <p class="section-desc">Send an invite by email so employees can join and add entries for this shop.</p>
-
-    @if (currentBusiness?.id) {
-      <form [formGroup]="memberForm" (ngSubmit)="addEmployee()" class="stack-form">
-        <label>
-          <span>Employee email</span>
-          <input formControlName="email" placeholder="employee@example.com" />
-        </label>
-        <label>
-          <span>Role</span>
-          <select formControlName="role">
-            <option value="employee">Employee</option>
-            <option value="manager">Manager</option>
-          </select>
-        </label>
-
-        @if (memberForm.controls.email.touched && memberForm.controls.email.invalid) {
-          <p class="err">Enter a valid email address.</p>
-        }
-        @if (memberError) {
-          <p class="err">{{ memberError }}</p>
-        }
-        @if (memberSaved) {
-          <p class="success-msg">Invite sent successfully.</p>
-        }
-
-        <button class="btn-primary" type="submit">Send Invite</button>
-      </form>
-
-      @if (loadingMembers) {
-        <p class="section-desc">Loading active members…</p>
-      } @else {
-        <div class="member-list">
-          @for (member of members; track member.userId) {
-            <div class="member-row">
-              <div>
-                <strong>{{ member.email }}</strong>
-                <p>{{ member.role | titlecase }}</p>
-              </div>
-              @if (member.role !== 'owner') {
-                <button class="btn-outline-danger btn-small" type="button" (click)="removeEmployee(member)">Remove</button>
-              }
-            </div>
-          }
-
-          @if (members.length === 0) {
-            <p class="section-desc">No active members yet.</p>
-          }
-        </div>
-      }
-    } @else {
-      <p class="section-desc">Create or select a shop first.</p>
-    }
-  </section>
+      <div>
+        <p class="nav-card-title">Team</p>
+        <p class="nav-card-desc">Invite employees and manage their roles</p>
+      </div>
+      <svg class="nav-card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </a>
+  </div>
 
   <!-- App Lock Card -->
   <section class="card">
@@ -147,7 +71,9 @@
         </svg>
         PIN lock is active
       </div>
-      <button class="btn-outline-danger" (click)="disablePin()">Disable Lock</button>
+      <button class="btn-outline-danger" (click)="disablePin()" [disabled]="disablingPin">
+        {{ disablingPin ? 'Disabling...' : 'Disable Lock' }}
+      </button>
     } @else {
       <form [formGroup]="pinForm" (ngSubmit)="savePin()" class="pin-form">
         <input
@@ -161,10 +87,7 @@
         @if (pinForm.controls.pin.invalid && pinForm.controls.pin.touched) {
           <span class="err">Enter exactly 4 digits</span>
         }
-        @if (pinSaved) {
-          <span class="success-msg">PIN saved!</span>
-        }
-        <button class="btn-primary" type="submit">Enable Lock</button>
+        <button class="btn-primary" type="submit" [disabled]="savingPin">{{ savingPin ? 'Saving...' : 'Enable Lock' }}</button>
       </form>
     }
   </section>

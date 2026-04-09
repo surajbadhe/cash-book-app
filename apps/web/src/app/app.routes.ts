@@ -83,6 +83,20 @@ export const routes: Routes = [
             (m) => m.SettingsComponent
           ),
       },
+        {
+          path: 'shop',
+          loadComponent: () =>
+            import('./features/shop/shop.component').then(
+              (m) => m.ShopComponent
+            ),
+        },
+        {
+          path: 'team',
+          loadComponent: () =>
+            import('./features/team/team.component').then(
+              (m) => m.TeamComponent
+            ),
+        },
     ],
   },
   {

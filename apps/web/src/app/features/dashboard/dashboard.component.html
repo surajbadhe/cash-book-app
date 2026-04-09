@@ -23,6 +23,14 @@
       <div class="skeleton-card"></div>
       <div class="skeleton-card"></div>
     </div>
+  } @else if (noBusinessAccess) {
+    <section class="card">
+      <div class="empty-state">
+        <p>No shop available yet.</p>
+        <p class="page-sub" style="margin-top:8px;">Create your first shop in Settings or accept an invite to join an existing one.</p>
+        <a routerLink="/settings" class="btn-text" style="margin-top:12px;display:inline-flex;">Go to Settings →</a>
+      </div>
+    </section>
   } @else {
     <div class="summary-grid">
       <div class="summary-card">
