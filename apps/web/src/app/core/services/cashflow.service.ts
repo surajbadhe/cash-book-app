@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import {
   AppLockSettings,
@@ -6,6 +6,8 @@ import {
   ReportSummary,
   TransactionType,
 } from '../models/cashflow.models';
+import { AuthService } from './auth.service';
+import { User } from '../models/auth.models';
 
 const STORAGE_KEYS = {
   transactions: 'cashflow.transactions',
@@ -16,13 +18,34 @@ const STORAGE_KEYS = {
   providedIn: 'root',
 })
 export class CashflowService {
-  private transactionsSubject = new BehaviorSubject<CashTransaction[]>(
-    this.loadTransactions()
-  );
+  private readonly authService = inject(AuthService);
+  private storageScope = 'guest';
+
+  private transactionsSubject = new BehaviorSubject<CashTransaction[]>([]);
   readonly transactions$ = this.transactionsSubject.asObservable();
 
-  private lockSubject = new BehaviorSubject<AppLockSettings>(this.loadLockSettings());
+  private lockSubject = new BehaviorSubject<AppLockSettings>({ enabled: false, pin: null });
   readonly lockSettings$ = this.lockSubject.asObservable();
+
+  constructor() {
+    localStorage.removeItem(STORAGE_KEYS.transactions);
+    localStorage.removeItem(STORAGE_KEYS.lock);
+
+    this.storageScope = this.resolveStorageScope(this.authService.currentUser);
+    this.transactionsSubject.next(this.loadTransactions());
+    this.lockSubject.next(this.loadLockSettings());
+
+    this.authService.currentUser$.subscribe((user) => {
+      const nextScope = this.resolveStorageScope(user);
+      if (nextScope === this.storageScope) {
+        return;
+      }
+
+      this.storageScope = nextScope;
+      this.transactionsSubject.next(this.loadTransactions());
+      this.lockSubject.next(this.loadLockSettings());
+    });
+  }
 
   get transactions(): CashTransaction[] {
     return this.transactionsSubject.value;
@@ -79,7 +102,7 @@ export class CashflowService {
     };
 
     this.lockSubject.next(next);
-    localStorage.setItem(STORAGE_KEYS.lock, JSON.stringify(next));
+    localStorage.setItem(this.storageKey('lock'), JSON.stringify(next));
   }
 
   disableLock(): void {
@@ -89,7 +112,7 @@ export class CashflowService {
     };
 
     this.lockSubject.next(next);
-    localStorage.setItem(STORAGE_KEYS.lock, JSON.stringify(next));
+    localStorage.setItem(this.storageKey('lock'), JSON.stringify(next));
   }
 
   validatePin(pin: string): boolean {
@@ -103,7 +126,7 @@ export class CashflowService {
   }
 
   private loadTransactions(): CashTransaction[] {
-    const raw = localStorage.getItem(STORAGE_KEYS.transactions);
+    const raw = localStorage.getItem(this.storageKey('transactions'));
     if (!raw) {
       return [];
     }
@@ -123,11 +146,11 @@ export class CashflowService {
   }
 
   private persistTransactions(transactions: CashTransaction[]): void {
-    localStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(transactions));
+    localStorage.setItem(this.storageKey('transactions'), JSON.stringify(transactions));
   }
 
   private loadLockSettings(): AppLockSettings {
-    const raw = localStorage.getItem(STORAGE_KEYS.lock);
+    const raw = localStorage.getItem(this.storageKey('lock'));
     if (!raw) {
       return {
         enabled: false,
@@ -155,5 +178,32 @@ export class CashflowService {
     }
 
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  private storageKey(type: keyof typeof STORAGE_KEYS): string {
+    return `${STORAGE_KEYS[type]}.${this.storageScope}`;
+  }
+
+  private resolveStorageScope(user: User | null): string {
+    if (user?.id) {
+      return `user:${user.id}`;
+    }
+
+    const storedUserRaw = localStorage.getItem('user');
+    if (!storedUserRaw) {
+      return 'guest';
+    }
+
+    try {
+      const storedUser = JSON.parse(storedUserRaw) as Partial<User> & { sub?: string };
+      const id = storedUser.id || storedUser.sub;
+      if (id) {
+        return `user:${id}`;
+      }
+    } catch {
+      return 'guest';
+    }
+
+    return 'guest';
   }
 }

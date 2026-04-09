@@ -36,8 +36,13 @@ export class ShellComponent {
   }
 
   switchBusiness(businessId: string): void {
+    if (!businessId || businessId === this.businessContext.currentBusiness?.id) {
+      this.closeSidebar();
+      return;
+    }
+
     this.businessContext.selectBusinessById(businessId);
-    window.location.reload();
+    this.closeSidebar();
   }
 
   getInitial(email: string): string {

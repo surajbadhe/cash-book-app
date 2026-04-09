@@ -31,39 +31,39 @@
   <p style="margin:-8px 0 16px;font-size:12px;color:#64748b;">Supported columns: Date, Time, Remark, Party, Category, Mode, Entry By, Cash In, Cash Out, Balance.</p>
 
   @if (importSuccessMessage) {
-    <div style="padding:10px 12px;border-radius:12px;font-size:13px;font-weight:500;margin-bottom:16px;background:rgba(16,185,129,0.08);color:#047857;border:1px solid rgba(16,185,129,0.18);">{{ importSuccessMessage }}</div>
-  }
-  @if (importErrorMessage) {
-    <div style="padding:10px 12px;border-radius:12px;font-size:13px;font-weight:500;margin-bottom:16px;background:rgba(239,68,68,0.08);color:#b91c1c;border:1px solid rgba(239,68,68,0.18);">{{ importErrorMessage }}</div>
-  }
-
-  @if (showImportErrorDetails && importDetailedErrors.length > 0) {
-    <div style="margin-bottom:16px;border-radius:12px;border:1px solid #fed7aa;background:#fffbeb;overflow:hidden;">
-      <div style="padding:10px 12px;background:#fef3c7;border-bottom:1px solid #fed7aa;display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:13px;font-weight:600;color:#92400e;">
-          ⚠ {{ importDetailedErrors.length }} row(s) failed to import
-        </div>
+    <div style="padding:10px 12px;border-radius:12px;font-size:13px;font-weight:500;margin-bottom:16px;background:rgba(16,185,129,0.08);color:#047857;border:1px solid rgba(16,185,129,0.18);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <span>{{ importSuccessMessage }}</span>
+      @if (hasImportIssues) {
         <button
           type="button"
-          (click)="showImportErrorDetails = !showImportErrorDetails"
-          style="background:transparent;border:none;color:#92400e;font-size:12px;font-weight:600;cursor:pointer;padding:0;"
+          (click)="openImportDetailsDialog()"
+          style="padding:6px 10px;background:#fff;color:#047857;border:1px solid rgba(4,120,87,0.35);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
         >
-          {{ showImportErrorDetails ? 'Hide' : 'Show' }} Details
+          View details
         </button>
-      </div>
-      @if (showImportErrorDetails) {
-        <div style="max-height:300px;overflow-y:auto;font-size:12px;">
-          @for (err of importDetailedErrors; track err.rowNumber) {
-            <div style="padding:10px 12px;border-bottom:1px solid #fed7aa;display:grid;grid-template-columns:60px 1fr;gap:8px;">
-              <div style="font-weight:600;color:#b45309;">Row {{ err.rowNumber }}</div>
-              <div>
-                <div style="color:#92400e;margin-bottom:4px;"><strong>{{ err.message }}</strong></div>
-                <div style="color:#b45309;font-size:11px;">
-                  Date: {{ err.date }} | Amount: {{ err.amount }} | Category: {{ err.category || '(empty)' }}
-                </div>
-              </div>
-            </div>
-          }
+      }
+    </div>
+  }
+  @if (importErrorMessage) {
+    <div style="padding:10px 12px;border-radius:12px;font-size:13px;font-weight:500;margin-bottom:16px;background:rgba(239,68,68,0.08);color:#b91c1c;border:1px solid rgba(239,68,68,0.18);">
+      <div>{{ importErrorMessage }}</div>
+      @if (showSessionRecoveryActions) {
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button
+            type="button"
+            (click)="continueSession()"
+            [disabled]="sessionRecoveryInProgress"
+            style="padding:6px 10px;background:#b91c1c;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
+          >
+            {{ sessionRecoveryInProgress ? 'Restoring…' : 'Continue session' }}
+          </button>
+          <button
+            type="button"
+            (click)="reLogin()"
+            style="padding:6px 10px;background:#fff;color:#b91c1c;border:1px solid rgba(185,28,28,0.35);border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
+          >
+            Log in again
+          </button>
         </div>
       }
     </div>
@@ -175,93 +175,99 @@
   }
 
   @if (editingTransactionId) {
-    <div class="form-card" [class.success]="editSuccess">
-      @if (editSuccess) {
-        <div class="success-banner">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          Transaction updated!
-        </div>
-      }
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <h3 style="margin:0;font-size:15px;font-weight:700;color:#0f172a;">Edit Transaction</h3>
-        <button
-          type="button"
-          (click)="closeEdit()"
-          style="background:transparent;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:0;line-height:1;"
-        >
-          ×
-        </button>
-      </div>
-
-      @if (editError) {
-        <div style="padding:10px 12px;border-radius:12px;font-size:12px;color:#b91c1c;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);margin-bottom:12px;">
-          {{ editError }}
-        </div>
-      }
-
-      <div class="type-pills">
-        <button type="button" class="pill" [class.in]="editForm.controls.type.value === 'cash-in'"
-          (click)="editForm.controls.type.setValue('cash-in')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-          </svg>
-          Cash In
-        </button>
-        <button type="button" class="pill" [class.out]="editForm.controls.type.value === 'cash-out'"
-          (click)="editForm.controls.type.setValue('cash-out')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
-          </svg>
-          Cash Out
-        </button>
-      </div>
-
-      <form [formGroup]="editForm" (ngSubmit)="submitEdit()" class="entry-form">
-        <div class="form-row">
-          <div class="form-field">
-            <label>Amount</label>
-            <div class="input-prefix">
-              <span>₹</span>
-              <input type="number" step="0.01" min="0.01" formControlName="amount" placeholder="0.00" />
-            </div>
-            @if (editForm.controls.amount.invalid && editForm.controls.amount.touched) {
-              <span class="err">Enter a valid amount</span>
-            }
+    <div style="position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;" (click)="closeEdit()">
+      <div id="edit-transaction-form" class="form-card" [class.success]="editSuccess" style="width:min(100%,720px);max-height:calc(100vh - 32px);overflow:auto;margin:0;box-shadow:0 20px 45px rgba(15,23,42,0.24);" (click)="$event.stopPropagation()">
+        @if (editSuccess) {
+          <div class="success-banner">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Transaction updated!
           </div>
+        }
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:12px;">
+          <div>
+            <h3 style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">Edit Transaction</h3>
+            <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Update the entry and save your changes.</p>
+          </div>
+          <button
+            type="button"
+            (click)="closeEdit()"
+            style="background:transparent;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:0;line-height:1;"
+            aria-label="Close edit dialog"
+          >
+            ×
+          </button>
+        </div>
 
-          <div class="form-field">
-            <label>Category</label>
-            <select formControlName="category">
-              @for (c of currentCategories; track c) {
-                <option [value]="c">{{ c }}</option>
+        @if (editError) {
+          <div style="padding:10px 12px;border-radius:12px;font-size:12px;color:#b91c1c;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.18);margin-bottom:12px;">
+            {{ editError }}
+          </div>
+        }
+
+        <div class="type-pills">
+          <button type="button" class="pill" [class.in]="editForm.controls.type.value === 'cash-in'"
+            (click)="editForm.controls.type.setValue('cash-in')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            </svg>
+            Cash In
+          </button>
+          <button type="button" class="pill" [class.out]="editForm.controls.type.value === 'cash-out'"
+            (click)="editForm.controls.type.setValue('cash-out')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+            </svg>
+            Cash Out
+          </button>
+        </div>
+
+        <form [formGroup]="editForm" (ngSubmit)="submitEdit()" class="entry-form">
+          <div class="form-row">
+            <div class="form-field">
+              <label>Amount</label>
+              <div class="input-prefix">
+                <span>₹</span>
+                <input id="edit-amount-input" type="number" step="0.01" min="0.01" formControlName="amount" placeholder="0.00" />
+              </div>
+              @if (editForm.controls.amount.invalid && editForm.controls.amount.touched) {
+                <span class="err">Enter a valid amount</span>
               }
-            </select>
-          </div>
-        </div>
+            </div>
 
-        <div class="form-row">
-          <div class="form-field">
-            <label>Date & Time</label>
-            <input type="datetime-local" formControlName="timestamp" />
+            <div class="form-field">
+              <label>Category</label>
+              <select formControlName="category">
+                @for (c of currentCategories; track c) {
+                  <option [value]="c">{{ c }}</option>
+                }
+              </select>
+            </div>
           </div>
 
-          <div class="form-field">
-            <label>Note <span class="opt">(optional)</span></label>
-            <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
-          </div>
-        </div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Date & Time</label>
+              <input type="datetime-local" formControlName="timestamp" />
+            </div>
 
-        <div style="display:flex;gap:8px;">
-          <button class="btn-submit" type="submit" style="flex:1;" [class.out]="editForm.controls.type.value === 'cash-out'">
-            Update
-          </button>
-          <button type="button" (click)="closeEdit()" style="flex:0;padding:12px 16px;background:#e2e8f0;color:#334155;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">
-            Cancel
-          </button>
-        </div>
-      </form>
+            <div class="form-field">
+              <label>Note <span class="opt">(optional)</span></label>
+              <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" (click)="closeEdit()" style="flex:0;padding:12px 16px;background:#e2e8f0;color:#334155;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;">
+              Cancel
+            </button>
+            <button class="btn-submit" type="submit" style="flex:1;max-width:220px;" [class.out]="editForm.controls.type.value === 'cash-out'">
+              Update
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   }
 
@@ -291,20 +297,6 @@
       }
     </select>
 
-    <input
-      type="date"
-      [value]="fromDate"
-      (change)="onDateFilterChange('from', $any($event.target).value)"
-      style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;min-width:0;"
-    />
-
-    <input
-      type="date"
-      [value]="toDate"
-      (change)="onDateFilterChange('to', $any($event.target).value)"
-      style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;min-width:0;"
-    />
-
     <select
       [value]="selectedSortOption"
       (change)="onSortChange($any($event.target).value)"
@@ -318,6 +310,42 @@
       <option value="categoryName:desc">Category: Z-A</option>
     </select>
   </div>
+
+  <!-- Date range presets -->
+  <div style="margin:-4px 0 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+    @for (preset of datePresets; track preset.value) {
+      <button
+        type="button"
+        (click)="applyDatePreset(preset.value)"
+        [style]="'padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid ' + (datePreset === preset.value ? '#6366f1' : '#e2e8f0') + ';background:' + (datePreset === preset.value ? '#6366f1' : '#fff') + ';color:' + (datePreset === preset.value ? '#fff' : '#475569') + ';'"
+      >
+        {{ preset.label }}
+      </button>
+    }
+  </div>
+
+  @if (datePreset === 'custom') {
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:12px;color:#64748b;white-space:nowrap;">From</label>
+        <input
+          type="date"
+          [value]="fromDate"
+          (change)="onDateFilterChange('from', $any($event.target).value)"
+          style="padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;"
+        />
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <label style="font-size:12px;color:#64748b;white-space:nowrap;">To</label>
+        <input
+          type="date"
+          [value]="toDate"
+          (change)="onDateFilterChange('to', $any($event.target).value)"
+          style="padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;"
+        />
+      </div>
+    </div>
+  }
 
   <div style="display:flex;justify-content:flex-end;margin:-6px 0 14px;">
     <button
@@ -491,6 +519,63 @@
             style="padding:10px 16px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;"
           >
             Delete {{ selectedCount }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showImportDetailsDialog && hasImportIssues) {
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;" (click)="closeImportDetailsDialog()">
+      <div style="background:#fff;border-radius:16px;max-width:900px;width:100%;max-height:min(calc(100vh - 32px), 700px);display:flex;flex-direction:column;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);" (click)="$event.stopPropagation()">
+        <div style="padding:16px 18px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:10px;">
+          <div>
+            <h2 style="margin:0;font-size:18px;font-weight:700;color:#0f172a;">Import details</h2>
+            <p style="margin:4px 0 0;font-size:12px;color:#64748b;">
+              {{ importErrorCount }} failed · {{ importSkippedCount }} skipped
+            </p>
+          </div>
+          <button type="button" (click)="closeImportDetailsDialog()" style="background:transparent;border:none;color:#64748b;font-size:22px;cursor:pointer;line-height:1;padding:0;">×</button>
+        </div>
+
+        <div style="overflow:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:720px;">
+            <thead>
+              <tr style="background:#f8fafc;color:#334155;text-align:left;">
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Row</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Status</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Reason</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Date/Time</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Cash In</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Cash Out</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Category</th>
+                <th style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">Remark</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of importIssueRows; track row.kind + '-' + row.rowNumber + '-' + row.message) {
+                <tr style="vertical-align:top;">
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#1e293b;font-weight:600;">{{ row.rowNumber }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">
+                    <span [style]="'display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;' + (row.kind === 'error' ? 'background:#fee2e2;color:#b91c1c;' : 'background:#fef3c7;color:#92400e;')">
+                      {{ row.kind === 'error' ? 'Failed' : 'Skipped' }}
+                    </span>
+                  </td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#334155;max-width:260px;">{{ row.message }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#475569;white-space:nowrap;">{{ row.date || '-' }} {{ row.time || '' }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#475569;white-space:nowrap;">{{ row.cashin || '-' }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#475569;white-space:nowrap;">{{ row.cashout || '-' }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#475569;">{{ row.category || '-' }}</td>
+                  <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;color:#475569;max-width:280px;">{{ row.remark || '-' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div style="padding:14px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;">
+          <button type="button" (click)="closeImportDetailsDialog()" style="padding:9px 14px;background:#e2e8f0;color:#334155;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">
+            Close
           </button>
         </div>
       </div>

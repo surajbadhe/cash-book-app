@@ -10,7 +10,34 @@
     <button class="tab" [class.active]="period === 'daily'" [disabled]="loading" (click)="setPeriod('daily')">Today</button>
     <button class="tab" [class.active]="period === 'weekly'" [disabled]="loading" (click)="setPeriod('weekly')">This Week</button>
     <button class="tab" [class.active]="period === 'monthly'" [disabled]="loading" (click)="setPeriod('monthly')">This Month</button>
+    <button class="tab" [class.active]="period === 'custom'" [disabled]="loading" (click)="setPeriod('custom')">Custom</button>
   </div>
+
+  @if (period === 'custom') {
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:0 0 18px;">
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:160px;">
+        <label style="font-size:12px;font-weight:600;color:#64748b;">From</label>
+        <input
+          type="date"
+          [value]="fromDate"
+          [disabled]="loading"
+          (change)="onCustomDateChange('from', $any($event.target).value)"
+          style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fff;min-width:0;"
+        />
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:6px;min-width:160px;">
+        <label style="font-size:12px;font-weight:600;color:#64748b;">To</label>
+        <input
+          type="date"
+          [value]="toDate"
+          [disabled]="loading"
+          (change)="onCustomDateChange('to', $any($event.target).value)"
+          style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fff;min-width:0;"
+        />
+      </div>
+    </div>
+  }
 
   @if (loading) {
     <!-- P&L banner skeleton -->

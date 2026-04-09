@@ -41,8 +41,11 @@ export class ReportsComponent implements OnInit, OnDestroy {
   dataMode: 'cloud' | 'local' = 'local';
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   loading = true;
+  private activeBusinessId: string | null = null;
 
-  period: 'daily' | 'weekly' | 'monthly' = 'monthly';
+  period: 'daily' | 'weekly' | 'monthly' | 'custom' = 'monthly';
+  fromDate = '';
+  toDate = '';
 
   totalIn = 0;
   totalOut = 0;
@@ -55,6 +58,19 @@ export class ReportsComponent implements OnInit, OnDestroy {
       this.authService.currentUser$.subscribe((user) => {
         this.user = user;
         this.load();
+      })
+    );
+    this.subs.add(
+      this.businessContext.currentBusiness$.subscribe((business) => {
+        const nextBusinessId = business?.id ?? null;
+        if (this.activeBusinessId === nextBusinessId) {
+          return;
+        }
+
+        this.activeBusinessId = nextBusinessId;
+        if (this.user && this.isOnline) {
+          this.load();
+        }
       })
     );
 
@@ -72,8 +88,27 @@ export class ReportsComponent implements OnInit, OnDestroy {
     }
   }
 
-  setPeriod(p: 'daily' | 'weekly' | 'monthly'): void {
+  setPeriod(p: 'daily' | 'weekly' | 'monthly' | 'custom'): void {
     this.period = p;
+    if (p === 'custom') {
+      const today = this.formatDateInput(new Date());
+      this.fromDate = this.fromDate || today;
+      this.toDate = this.toDate || today;
+    }
+    this.load();
+  }
+
+  onCustomDateChange(which: 'from' | 'to', value: string): void {
+    if (which === 'from') {
+      this.fromDate = value;
+    } else {
+      this.toDate = value;
+    }
+
+    if (this.period !== 'custom') {
+      this.period = 'custom';
+    }
+
     this.load();
   }
 
@@ -90,6 +125,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
 
   private loadRemote(): void {
     const name = this.user!.email ? `${this.user!.email.split('@')[0]}'s Business` : 'My Business';
+    const customRange = this.getNormalizedCustomRange();
     this.subs.add(
       this.businessContext
         .ensureBusinessReady(name)
@@ -97,9 +133,19 @@ export class ReportsComponent implements OnInit, OnDestroy {
           switchMap(() =>
             forkJoin({
               transactions: this.cashflowApiService
-                .listTransactions({ page: 1, limit: 500 })
+                .listTransactions({
+                  page: 1,
+                  limit: 500,
+                  from: customRange?.from,
+                  to: customRange?.to,
+                })
                 .pipe(catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
-              dashboard: this.cashflowApiService.getDashboardReport(new Date().toISOString().split('T')[0]).pipe(catchError(() => of(null))),
+              dashboard:
+                this.period === 'custom'
+                  ? of(null)
+                  : this.cashflowApiService
+                      .getDashboardReport(new Date().toISOString().split('T')[0])
+                      .pipe(catchError(() => of(null))),
               settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
             })
           )
@@ -175,6 +221,17 @@ export class ReportsComponent implements OnInit, OnDestroy {
     const now = new Date();
     return txns.filter((t) => {
       const d = new Date(t.timestamp);
+      if (this.period === 'custom') {
+        const customRange = this.getNormalizedCustomRange();
+        if (!customRange) {
+          return true;
+        }
+
+        const start = new Date(`${customRange.from}T00:00:00.000Z`);
+        const end = new Date(`${customRange.to}T23:59:59.999Z`);
+        return d >= start && d <= end;
+      }
+
       if (this.period === 'daily') {
         return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
       }
@@ -214,6 +271,32 @@ export class ReportsComponent implements OnInit, OnDestroy {
         color: CHART_COLORS[i % CHART_COLORS.length],
       }))
       .sort((a, b) => b.total - a.total);
+  }
+
+  private getNormalizedCustomRange(): { from: string; to: string } | null {
+    if (this.period !== 'custom') {
+      return null;
+    }
+
+    if (!this.fromDate && !this.toDate) {
+      return null;
+    }
+
+    const from = this.fromDate || this.toDate;
+    const to = this.toDate || this.fromDate;
+
+    if (!from || !to) {
+      return null;
+    }
+
+    return from <= to ? { from, to } : { from: to, to: from };
+  }
+
+  private formatDateInput(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private onOnline = (): void => { this.isOnline = true; this.load(); };

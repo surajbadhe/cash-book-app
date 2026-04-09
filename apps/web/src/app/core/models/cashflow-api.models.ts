@@ -80,12 +80,26 @@ export interface TransactionImportResponse {
   createdCount: number;
   skippedCount: number;
   categoriesCreated: number;
+  skippedRows: Array<{
+    rowNumber: number;
+    message: string;
+    date: string;
+    time: string;
+    cashin: string;
+    cashout: string;
+    category: string;
+    remark: string;
+  }>;
   errors: Array<{
     rowNumber: number;
     message: string;
     date: string;
+    time: string;
+    cashin: string;
+    cashout: string;
     amount: string;
     category: string;
+    remark: string;
   }>;
 }
 

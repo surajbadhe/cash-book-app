@@ -60,13 +60,19 @@
     .logo-icon {
       width: 36px;
       height: 36px;
-      background: #6366f1;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      svg { stroke: #fff; }
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
     }
 
     .logo-text {
@@ -235,12 +241,18 @@
     .logo-icon {
       width: 28px;
       height: 28px;
-      background: #6366f1;
       border-radius: 8px;
       display: flex;
       align-items: center;
       justify-content: center;
-      svg { stroke: #fff; }
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
     }
 
     .logo-text {

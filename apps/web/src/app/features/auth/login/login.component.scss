@@ -7,6 +7,13 @@
   background: #f0f2f5;
 }
 
+.brand-logo img,
+.mobile-logo .logo-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* Brand panel */
 .brand-panel {
   flex: 1;
@@ -23,16 +30,15 @@
 
   .brand-logo {
     width: 56px; height: 56px;
-    background: rgba(255,255,255,0.15);
     border-radius: 16px;
     display: flex; align-items: center; justify-content: center;
     margin-bottom: 24px;
+    overflow: hidden;
   }
 
   h1 {
     font-size: 36px;
     font-weight: 800;
-    letter-spacing: -0.5px;
     margin: 0 0 16px;
   }
 
@@ -86,9 +92,9 @@
 
   .logo-icon {
     width: 36px; height: 36px;
-    background: #6366f1;
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
   }
 
   span {

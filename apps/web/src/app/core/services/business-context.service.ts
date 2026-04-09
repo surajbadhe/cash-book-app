@@ -3,7 +3,7 @@ import { BehaviorSubject, Observable, of, switchMap, tap } from 'rxjs';
 import { CashflowApiService } from './cashflow-api.service';
 import { BusinessProfile } from '../models/cashflow-api.models';
 
-const STORAGE_KEY = 'currentBusinessId';
+const STORAGE_KEY_PREFIX = 'currentBusinessId';
 
 @Injectable({
   providedIn: 'root',
@@ -22,7 +22,7 @@ export class BusinessContextService {
   }
 
   get currentBusinessId(): string | null {
-    return this.currentBusiness?.id || localStorage.getItem(STORAGE_KEY);
+    return this.currentBusiness?.id || localStorage.getItem(this.storageKey());
   }
 
   refreshBusinesses(): Observable<BusinessProfile[]> {
@@ -65,10 +65,11 @@ export class BusinessContextService {
 
   setCurrentBusiness(business: BusinessProfile | null): void {
     this.currentBusinessSubject.next(business);
+    const storageKey = this.storageKey();
     if (business?.id) {
-      localStorage.setItem(STORAGE_KEY, business.id);
+      localStorage.setItem(storageKey, business.id);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(storageKey);
     }
   }
 
@@ -78,8 +79,23 @@ export class BusinessContextService {
   }
 
   private syncCurrentBusiness(businesses: BusinessProfile[]): void {
-    const storedId = localStorage.getItem(STORAGE_KEY);
+    const storedId = localStorage.getItem(this.storageKey());
     const selected = businesses.find((item) => item.id === storedId) || businesses[0] || null;
     this.setCurrentBusiness(selected);
+  }
+
+  private storageKey(): string {
+    const userRaw = localStorage.getItem('user');
+    if (!userRaw) {
+      return `${STORAGE_KEY_PREFIX}.guest`;
+    }
+
+    try {
+      const user = JSON.parse(userRaw) as { id?: string; sub?: string };
+      const userId = user.id || user.sub;
+      return userId ? `${STORAGE_KEY_PREFIX}.${userId}` : `${STORAGE_KEY_PREFIX}.guest`;
+    } catch {
+      return `${STORAGE_KEY_PREFIX}.guest`;
+    }
   }
 }

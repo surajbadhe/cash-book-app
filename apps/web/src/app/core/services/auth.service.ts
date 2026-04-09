@@ -249,6 +249,7 @@ export class AuthService {
     this.currentUserSubject.next(null);
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('currentBusinessId');
   }
 
   /**

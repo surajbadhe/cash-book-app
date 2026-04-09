@@ -132,6 +132,11 @@ export class TransactionService implements OnModuleInit {
       message: string;
       values: Record<string, string>;
     }> = [];
+    const skippedRows: Array<{
+      rowNumber: number;
+      message: string;
+      values: Record<string, string>;
+    }> = [];
     let skippedCount = 0;
     let categoriesCreated = 0;
 
@@ -150,6 +155,18 @@ export class TransactionService implements OnModuleInit {
 
         if (amountIn <= 0 && amountOut <= 0) {
           skippedCount++;
+          skippedRows.push({
+            rowNumber,
+            message: 'Both Cash In and Cash Out are empty or zero',
+            values: {
+              date: row[headers.indexOf('date')] || '',
+              time: row[headers.indexOf('time')] || '',
+              cashin: row[headers.indexOf('cashin')] || '',
+              cashout: row[headers.indexOf('cashout')] || '',
+              category: row[headers.indexOf('category')] || '',
+              remark: row[headers.indexOf('remark')] || '',
+            },
+          });
           continue;
         }
 
@@ -199,6 +216,8 @@ export class TransactionService implements OnModuleInit {
           values: {
             date: row[headers.indexOf('date')] || '',
             time: row[headers.indexOf('time')] || '',
+            cashin: row[headers.indexOf('cashin')] || '',
+            cashout: row[headers.indexOf('cashout')] || '',
             amount: row[headers.indexOf('cashin')] || row[headers.indexOf('cashout')] || '',
             category: row[headers.indexOf('category')] || '',
             remark: row[headers.indexOf('remark')] || '',
@@ -222,12 +241,26 @@ export class TransactionService implements OnModuleInit {
       createdCount: inserted.length,
       skippedCount,
       categoriesCreated,
+      skippedRows: skippedRows.map((row) => ({
+        rowNumber: row.rowNumber,
+        message: row.message,
+        date: row.values.date,
+        time: row.values.time,
+        cashin: row.values.cashin,
+        cashout: row.values.cashout,
+        category: row.values.category,
+        remark: row.values.remark,
+      })),
       errors: errors.map((err) => ({
         rowNumber: err.rowNumber,
         message: err.message,
         date: err.values.date,
+        time: err.values.time,
+        cashin: err.values.cashin,
+        cashout: err.values.cashout,
         amount: err.values.amount,
         category: err.values.category,
+        remark: err.values.remark,
       })),
     };
   }

@@ -55,14 +55,20 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   importing = false;
   importSuccessMessage = '';
   importErrorMessage = '';
-  importDetailedErrors: Array<{
+  showSessionRecoveryActions = false;
+  sessionRecoveryInProgress = false;
+  importIssueRows: Array<{
+    kind: 'error' | 'skipped';
     rowNumber: number;
     message: string;
     date: string;
-    amount: string;
+    time: string;
+    cashin: string;
+    cashout: string;
     category: string;
+    remark: string;
   }> = [];
-  showImportErrorDetails = false;
+  showImportDetailsDialog = false;
 
   toastMessage: string | null = null;
   toastType: 'success' | 'error' = 'success';
@@ -100,11 +106,23 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   categoryFilter = '';
   fromDate = '';
   toDate = '';
+  datePreset: 'today' | 'yesterday' | 'this-week' | 'last-7' | 'this-month' | 'last-month' | 'custom' | '' = '';
+
+  readonly datePresets: Array<{ label: string; value: 'today' | 'yesterday' | 'this-week' | 'last-7' | 'this-month' | 'last-month' | 'custom' }> = [
+    { label: 'Today',       value: 'today' },
+    { label: 'Yesterday',   value: 'yesterday' },
+    { label: 'This Week',   value: 'this-week' },
+    { label: 'Last 7 Days', value: 'last-7' },
+    { label: 'This Month',  value: 'this-month' },
+    { label: 'Last Month',  value: 'last-month' },
+    { label: 'Custom',      value: 'custom' },
+  ];
   sortBy: 'occurredAt' | 'amount' | 'categoryName' = 'occurredAt';
   sortOrder: 'asc' | 'desc' = 'desc';
   currentPage = 1;
   pageSize = 20;
   totalItems = 0;
+  private activeBusinessId: string | null = null;
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   get filteredTransactions(): CashTransaction[] {
@@ -208,6 +226,18 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return this.selectedIds.size;
   }
 
+  get hasImportIssues(): boolean {
+    return this.importIssueRows.length > 0;
+  }
+
+  get importErrorCount(): number {
+    return this.importIssueRows.filter((row) => row.kind === 'error').length;
+  }
+
+  get importSkippedCount(): number {
+    return this.importIssueRows.filter((row) => row.kind === 'skipped').length;
+  }
+
   toggleSelect(id: string): void {
     if (this.selectedIds.has(id)) {
       this.selectedIds.delete(id);
@@ -280,6 +310,19 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         this.load();
       })
     );
+    this.subs.add(
+      this.businessContext.currentBusiness$.subscribe((business) => {
+        const nextBusinessId = business?.id ?? null;
+        if (this.activeBusinessId === nextBusinessId) {
+          return;
+        }
+
+        this.activeBusinessId = nextBusinessId;
+        if (this.user && this.isOnline) {
+          this.load();
+        }
+      })
+    );
 
     this.subs.add(
       this.form.controls.type.valueChanges.subscribe((type) => {
@@ -304,6 +347,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
+    this.syncEditModalState(false);
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
       this.searchDebounceTimer = null;
@@ -359,6 +403,49 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     } else {
       this.toDate = value;
     }
+    this.datePreset = 'custom';
+    this.refreshFilters();
+  }
+
+  applyDatePreset(preset: typeof this.datePreset): void {
+    this.datePreset = preset;
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (preset === 'today') {
+      const s = fmt(today);
+      this.fromDate = s;
+      this.toDate = s;
+    } else if (preset === 'yesterday') {
+      const y = new Date(today);
+      y.setDate(y.getDate() - 1);
+      const s = fmt(y);
+      this.fromDate = s;
+      this.toDate = s;
+    } else if (preset === 'this-week') {
+      const start = new Date(today);
+      start.setDate(today.getDate() - ((today.getDay() + 6) % 7)); // Mon
+      this.fromDate = fmt(start);
+      this.toDate = fmt(today);
+    } else if (preset === 'last-7') {
+      const start = new Date(today);
+      start.setDate(today.getDate() - 6);
+      this.fromDate = fmt(start);
+      this.toDate = fmt(today);
+    } else if (preset === 'this-month') {
+      this.fromDate = fmt(new Date(today.getFullYear(), today.getMonth(), 1));
+      this.toDate = fmt(today);
+    } else if (preset === 'last-month') {
+      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const last = new Date(today.getFullYear(), today.getMonth(), 0);
+      this.fromDate = fmt(first);
+      this.toDate = fmt(last);
+    } else if (preset === 'custom') {
+      // keep fromDate / toDate as-is, user will pick
+      return;
+    }
+
     this.refreshFilters();
   }
 
@@ -407,6 +494,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.categoryFilter = '';
     this.fromDate = '';
     this.toDate = '';
+    this.datePreset = '';
     this.sortBy = 'occurredAt';
     this.sortOrder = 'desc';
     this.refreshFilters();
@@ -415,6 +503,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   triggerImport(input: HTMLInputElement): void {
     this.importErrorMessage = '';
     this.importSuccessMessage = '';
+    this.showSessionRecoveryActions = false;
     input.click();
   }
 
@@ -426,8 +515,24 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.user || !this.isOnline || this.dataMode !== 'cloud') {
-      this.importErrorMessage = 'Bulk import is available only when you are signed in and online.';
+    if (!this.user) {
+      this.importErrorMessage = 'Your session is no longer active. Please log in again.';
+      this.showSessionRecoveryActions = true;
+      input.value = '';
+      return;
+    }
+
+    if (!this.isOnline) {
+      this.importErrorMessage = 'You are offline. Connect to the internet to use bulk import.';
+      this.showSessionRecoveryActions = false;
+      input.value = '';
+      return;
+    }
+
+    if (this.dataMode !== 'cloud') {
+      this.importErrorMessage =
+        'Your cloud session is unavailable right now. Continue session or log in again to use bulk import.';
+      this.showSessionRecoveryActions = true;
       input.value = '';
       return;
     }
@@ -441,9 +546,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
     this.importing = true;
     this.importErrorMessage = '';
+    this.showSessionRecoveryActions = false;
     this.importSuccessMessage = '';
-    this.importDetailedErrors = [];
-    this.showImportErrorDetails = false;
+    this.importIssueRows = [];
+    this.showImportDetailsDialog = false;
 
     this.subs.add(
       this.cashflowApiService.importTransactions(file).subscribe({
@@ -455,18 +561,50 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           if (result.categoriesCreated) {
             parts.push(`${result.categoriesCreated} category(s) added`);
           }
-          if (result.errors.length) {
-            parts.push(`${result.errors.length} row error(s) — view details`);
-            this.importDetailedErrors = result.errors;
-            this.showImportErrorDetails = true;
+          this.importIssueRows = [
+            ...(result.errors || []).map((row) => ({
+              kind: 'error' as const,
+              rowNumber: row.rowNumber,
+              message: row.message,
+              date: row.date,
+              time: row.time || '',
+              cashin: row.cashin || '',
+              cashout: row.cashout || '',
+              category: row.category || '',
+              remark: row.remark || '',
+            })),
+            ...(result.skippedRows || []).map((row) => ({
+              kind: 'skipped' as const,
+              rowNumber: row.rowNumber,
+              message: row.message,
+              date: row.date,
+              time: row.time || '',
+              cashin: row.cashin || '',
+              cashout: row.cashout || '',
+              category: row.category || '',
+              remark: row.remark || '',
+            })),
+          ].sort((left, right) => left.rowNumber - right.rowNumber);
+
+          if (this.importIssueRows.length) {
+            const errorCount = this.importErrorCount;
+            const skippedCount = this.importSkippedCount;
+            if (errorCount) {
+              parts.push(`${errorCount} failed`);
+            }
+            if (skippedCount) {
+              parts.push(`${skippedCount} skipped with details`);
+            }
           }
           this.importSuccessMessage = parts.join(' · ');
           this.loadRemote();
         },
         error: (err) => {
           this.importErrorMessage = err?.error?.message || 'Unable to import file';
-          this.importDetailedErrors = [];
-          this.showImportErrorDetails = false;
+          this.showSessionRecoveryActions =
+            err?.status === 401 || err?.status === 403 || this.dataMode !== 'cloud';
+          this.importIssueRows = [];
+          this.showImportDetailsDialog = false;
         },
         complete: () => {
           this.importing = false;
@@ -607,9 +745,11 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.showForm = false;
     this.editingTransactionId = transaction.id;
     this.editSuccess = false;
     this.editError = '';
+    this.syncEditModalState(true);
 
     const category = this.remoteCategories.find((c) => c.name === transaction.category);
     const type = transaction.type as TransactionType;
@@ -625,9 +765,14 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       timestamp: localDateTime,
       note: transaction.note || '',
     });
+
+    setTimeout(() => {
+      this.focusEditAmountInput();
+    }, 0);
   }
 
   closeEdit(): void {
+    this.syncEditModalState(false);
     this.editingTransactionId = null;
     this.editSuccess = false;
     this.editError = '';
@@ -679,6 +824,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   private load(): void {
+    this.showSessionRecoveryActions = false;
     if (this.user && this.isOnline) {
       this.dataMode = 'cloud';
       this.loadRemote();
@@ -707,6 +853,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         )
         .subscribe({
           next: ({ categories, transactions, settings }) => {
+            this.showSessionRecoveryActions = false;
             this.remoteCategories = categories;
             this.transactions = transactions.items.map(mapTransactionItemToCashTransaction);
             this.currentPage = transactions.page;
@@ -721,6 +868,64 @@ export class TransactionsComponent implements OnInit, OnDestroy {
           },
         })
     );
+  }
+
+  continueSession(): void {
+    if (this.sessionRecoveryInProgress) {
+      return;
+    }
+
+    this.sessionRecoveryInProgress = true;
+    this.importErrorMessage = '';
+
+    this.subs.add(
+      this.authService.refreshToken().subscribe({
+        next: (result) => {
+          if (!result?.accessToken) {
+            this.sessionRecoveryInProgress = false;
+            this.showSessionRecoveryActions = true;
+            this.importErrorMessage = 'Session expired. Please log in again.';
+            return;
+          }
+
+          this.subs.add(
+            this.authService.getCurrentUser().subscribe({
+              next: () => {
+                this.sessionRecoveryInProgress = false;
+                this.showSessionRecoveryActions = false;
+                this.load();
+                this.showToast('Session restored. You can import now.', 'success');
+              },
+              error: () => {
+                this.sessionRecoveryInProgress = false;
+                this.showSessionRecoveryActions = true;
+                this.importErrorMessage = 'Could not restore session. Please log in again.';
+              },
+            })
+          );
+        },
+        error: () => {
+          this.sessionRecoveryInProgress = false;
+          this.showSessionRecoveryActions = true;
+          this.importErrorMessage = 'Session expired. Please log in again.';
+        },
+      })
+    );
+  }
+
+  reLogin(): void {
+    this.authService.expireSession(true);
+  }
+
+  openImportDetailsDialog(): void {
+    if (!this.importIssueRows.length) {
+      return;
+    }
+    this.showImportDetailsDialog = true;
+  }
+
+  closeImportDetailsDialog(): void {
+    this.showImportDetailsDialog = false;
   }
 
   private loadLocal(): void {
@@ -805,6 +1010,24 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   private nowLocal(): string {
     const d = new Date();
     return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+  }
+
+  private focusEditAmountInput(): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    const amountInput = document.getElementById('edit-amount-input') as HTMLInputElement | null;
+    amountInput?.focus();
+    amountInput?.select();
+  }
+
+  private syncEditModalState(isOpen: boolean): void {
+    if (typeof document === 'undefined') {
+      return;
+    }
+
+    document.body.style.overflow = isOpen ? 'hidden' : '';
   }
 
   private onOnline = (): void => { this.isOnline = true; this.load(); };

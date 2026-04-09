@@ -45,12 +45,26 @@ export class DashboardComponent implements OnInit, OnDestroy {
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   currencyCode = 'INR';
   loading = true;
+  private activeBusinessId: string | null = null;
 
   ngOnInit(): void {
     this.subs.add(
       this.authService.currentUser$.subscribe((user) => {
         this.user = user;
         this.load();
+      })
+    );
+    this.subs.add(
+      this.businessContext.currentBusiness$.subscribe((business) => {
+        const nextBusinessId = business?.id ?? null;
+        if (this.activeBusinessId === nextBusinessId) {
+          return;
+        }
+
+        this.activeBusinessId = nextBusinessId;
+        if (this.user && this.isOnline) {
+          this.load();
+        }
       })
     );
     if (typeof window !== 'undefined') {
