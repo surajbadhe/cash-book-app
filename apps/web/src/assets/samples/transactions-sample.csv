@@ -1,5 +1,5 @@
 Date,Time,Remark,Party,Category,Mode,Entry By,Cash In,Cash Out,Balance
-2026-04-01,09:00,Opening balance,,Opening Balance,Cash,Owner,5000,0,5000
-2026-04-01,12:30,Lunch sale,Walk-in,Sales,UPI,Employee,1250,0,6250
-2026-04-01,14:15,Vegetable purchase,Fresh Farm,Supplies,Cash,Manager,0,800,5450
-2026-04-01,18:00,Online order,Swiggy,Sales,Card,Employee,920,0,6370
+01-04-2026,09:00,Opening balance,,Opening Balance,Cash,Owner,5000,0,5000
+01-04-2026,12:30,Lunch sale,Walk-in,Sales,UPI,Employee,1250,0,6250
+01-04-2026,14:15,Vegetable purchase,Fresh Farm,Supplies,Cash,Manager,0,800,5450
+01-04-2026,18:00,Online order,Swiggy,Sales,Card,Employee,920,0,6370

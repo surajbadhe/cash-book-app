@@ -26,7 +26,14 @@ export const authInterceptor: HttpInterceptorFn = (
 ): Observable<HttpEvent<any>> => {
   const authService = inject(AuthService);
   const businessContext = inject(BusinessContextService);
-  const isAuthRequest = req.url.includes('/auth/');
+  const isRefreshRequest = req.url.includes('/auth/refresh');
+  const isPublicAuthRequest =
+    req.url.includes('/auth/login') ||
+    req.url.includes('/auth/register') ||
+    req.url.includes('/auth/forgot-password') ||
+    req.url.includes('/auth/reset-password') ||
+    req.url.includes('/auth/google') ||
+    req.url.includes('/auth/github');
 
   // Clone request and add Authorization header if token exists
   const token = authService.accessToken;
@@ -53,8 +60,9 @@ export const authInterceptor: HttpInterceptorFn = (
       // Handle 401 Unauthorized errors
       if (
         error.status === 401 &&
-        !req.url.includes('/auth/refresh') &&
-        !isAuthRequest
+        !isRefreshRequest &&
+        !isPublicAuthRequest &&
+        !!authService.accessToken
       ) {
         return handle401Error(req, next, authService);
       }

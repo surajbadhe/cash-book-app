@@ -178,10 +178,16 @@ export class CashflowApiService {
     categoryId: string;
     occurredAt: string;
     note?: string;
+    party?: string;
+    mode?: string;
+    entryBy?: string;
   }): Observable<void> {
     const sanitizedPayload = {
       ...payload,
       note: payload.note?.trim() || undefined,
+      party: payload.party?.trim() || undefined,
+      mode: payload.mode?.trim() || undefined,
+      entryBy: payload.entryBy?.trim() || undefined,
     };
 
     return this.http
@@ -204,10 +210,16 @@ export class CashflowApiService {
     categoryId?: string;
     occurredAt?: string;
     note?: string;
+    party?: string;
+    mode?: string;
+    entryBy?: string;
   }): Observable<void> {
     const sanitizedPayload = {
       ...payload,
       note: payload.note?.trim() || undefined,
+      party: payload.party?.trim() || undefined,
+      mode: payload.mode?.trim() || undefined,
+      entryBy: payload.entryBy?.trim() || undefined,
     };
 
     return this.http

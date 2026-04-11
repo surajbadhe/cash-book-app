@@ -56,9 +56,13 @@ export interface TransactionItem {
   categoryName: string;
   occurredAt: string;
   note?: string;
+  party?: string;
+  mode?: string;
+  entryBy?: string;
   source?: string;
   deviceId?: string;
   localRef?: string;
+  runningBalance?: number;
   createdBy?: string;
   updatedBy?: string;
   deletedAt?: string | null;
@@ -156,6 +160,10 @@ export function mapTransactionItemToCashTransaction(item: TransactionItem): Cash
     amount: normalized.amount,
     category: normalized.categoryName,
     timestamp: normalized.occurredAt,
+    runningBalance: normalized.runningBalance,
     note: normalized.note,
+    party: normalized.party,
+    mode: normalized.mode,
+    entryBy: normalized.entryBy,
   };
 }

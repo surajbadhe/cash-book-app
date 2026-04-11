@@ -44,7 +44,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
   noBusinessAccess = false;
   private activeBusinessId: string | null = null;
 
-  period: 'daily' | 'weekly' | 'monthly' | 'custom' = 'monthly';
+  period: 'all' | 'daily' | 'weekly' | 'monthly' | 'custom' = 'monthly';
   fromDate = '';
   toDate = '';
 
@@ -89,7 +89,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
     }
   }
 
-  setPeriod(p: 'daily' | 'weekly' | 'monthly' | 'custom'): void {
+  setPeriod(p: 'all' | 'daily' | 'weekly' | 'monthly' | 'custom'): void {
     this.period = p;
     if (p === 'custom') {
       const today = this.formatDateInput(new Date());
@@ -135,16 +135,11 @@ export class ReportsComponent implements OnInit, OnDestroy {
             business
               ? forkJoin({
                   business: of(business),
-                  transactions: this.cashflowApiService
-                    .listTransactions({
-                      page: 1,
-                      limit: 500,
-                      from: customRange?.from,
-                      to: customRange?.to,
-                    })
-                    .pipe(catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                  transactions: this.fetchAllReportTransactions(customRange).pipe(
+                    catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))
+                  ),
                   dashboard:
-                    this.period === 'custom'
+                    this.period === 'custom' || this.period === 'all'
                       ? of(null)
                       : this.cashflowApiService
                           .getDashboardReport(new Date().toISOString().split('T')[0])
@@ -162,7 +157,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
             if (business && dashboard) {
               this.applyRemote(dashboard, txns);
             } else {
-              this.applyLocal(txns);
+              this.applyCloudTransactionSummary(txns, transactions.summary);
             }
             this.loading = false;
           },
@@ -227,6 +222,10 @@ export class ReportsComponent implements OnInit, OnDestroy {
     const now = new Date();
     return txns.filter((t) => {
       const d = new Date(t.timestamp);
+      if (this.period === 'all') {
+        return true;
+      }
+
       if (this.period === 'custom') {
         const customRange = this.getNormalizedCustomRange();
         if (!customRange) {
@@ -249,6 +248,53 @@ export class ReportsComponent implements OnInit, OnDestroy {
       }
       return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
     });
+  }
+
+  private applyCloudTransactionSummary(
+    txns: CashTransaction[],
+    summary: { totalIn: number; totalOut: number; net: number }
+  ): void {
+    this.totalIn = summary.totalIn;
+    this.totalOut = summary.totalOut;
+    this.net = summary.net;
+    this.buildCategoryStats(txns.filter((t) => t.type === 'cash-out'));
+    this.buildIncomeStats(txns.filter((t) => t.type === 'cash-in'));
+  }
+
+  private fetchAllReportTransactions(customRange: { from: string; to: string } | null) {
+    const baseParams = {
+      limit: 500,
+      from: customRange?.from,
+      to: customRange?.to,
+    };
+
+    return this.cashflowApiService.listTransactions({ ...baseParams, page: 1 }).pipe(
+      switchMap((firstPage) => {
+        const totalPages = Math.max(1, Math.ceil(firstPage.total / firstPage.limit));
+        if (totalPages === 1) {
+          return of(firstPage);
+        }
+
+        const requests = Array.from({ length: totalPages - 1 }, (_, index) =>
+          this.cashflowApiService.listTransactions({
+            ...baseParams,
+            page: index + 2,
+          })
+        );
+
+        return forkJoin(requests).pipe(
+          switchMap((remainingPages) =>
+            of({
+              ...firstPage,
+              items: [
+                ...firstPage.items,
+                ...remainingPages.flatMap((page) => page.items),
+              ],
+            })
+          )
+        );
+      })
+    );
   }
 
   private buildCategoryStats(expenses: CashTransaction[]): void {

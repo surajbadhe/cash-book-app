@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght@400');
+
 * {
   box-sizing: border-box;
 }
@@ -14,4 +16,16 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* AG Grid row actions - show only on hover */
+.ag-theme-quartz .row-actions {
+  display: none !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ag-theme-quartz .ag-row-hover .row-actions {
+  display: flex !important;
 }

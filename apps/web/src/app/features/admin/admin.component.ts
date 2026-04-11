@@ -54,7 +54,7 @@ import { ErrorLog } from '../../core/models/admin.models';
                 </span>
                 <span class="actions">
                   <button class="chip" (click)="toggleRole(u, userRoles.ADMIN)">
-                    {{ u.roles?.includes(userRoles.ADMIN) ? 'Revoke admin' : 'Make admin' }}
+                    {{ u.roles.includes(userRoles.ADMIN) ? 'Revoke admin' : 'Make admin' }}
                   </button>
                   <button class="chip" (click)="toggleActive(u)">
                     {{ u.isActive === false ? 'Activate' : 'Deactivate' }}

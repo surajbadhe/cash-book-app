@@ -61,6 +61,9 @@ export class CashflowService {
     category: string;
     timestamp: string;
     note?: string;
+    party?: string;
+    mode?: string;
+    entryBy?: string;
   }): void {
     const transaction: CashTransaction = {
       id: this.createId(),
@@ -69,6 +72,9 @@ export class CashflowService {
       category: payload.category,
       timestamp: payload.timestamp,
       note: payload.note?.trim() || undefined,
+      party: payload.party?.trim() || undefined,
+      mode: payload.mode?.trim() || undefined,
+      entryBy: payload.entryBy?.trim() || undefined,
     };
 
     const next = [transaction, ...this.transactionsSubject.value];

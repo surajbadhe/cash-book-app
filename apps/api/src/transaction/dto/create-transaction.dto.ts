@@ -29,6 +29,24 @@ export class CreateTransactionDto {
   @Length(1, 300)
   note?: string;
 
+  @ApiPropertyOptional({ example: 'Walk-in' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  party?: string;
+
+  @ApiPropertyOptional({ example: 'UPI' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 40)
+  mode?: string;
+
+  @ApiPropertyOptional({ example: 'Owner' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  entryBy?: string;
+
   @ApiPropertyOptional({ enum: TransactionSource, default: TransactionSource.MANUAL })
   @IsOptional()
   @IsEnum(TransactionSource)

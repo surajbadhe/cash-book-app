@@ -7,6 +7,7 @@
   </div>
 
   <div class="period-tabs">
+    <button class="tab" [class.active]="period === 'all'" [disabled]="loading" (click)="setPeriod('all')">All</button>
     <button class="tab" [class.active]="period === 'daily'" [disabled]="loading" (click)="setPeriod('daily')">Today</button>
     <button class="tab" [class.active]="period === 'weekly'" [disabled]="loading" (click)="setPeriod('weekly')">This Week</button>
     <button class="tab" [class.active]="period === 'monthly'" [disabled]="loading" (click)="setPeriod('monthly')">This Month</button>

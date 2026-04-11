@@ -87,6 +87,9 @@ export class TransactionService implements OnModuleInit {
       categoryName: category.name,
       occurredAt: new Date(dto.occurredAt),
       note: dto.note?.trim() || undefined,
+      party: dto.party?.trim() || undefined,
+      mode: dto.mode?.trim() || undefined,
+      entryBy: dto.entryBy?.trim() || undefined,
       source: dto.source ?? TransactionSource.MANUAL,
       ...(normalizedDeviceId ? { deviceId: normalizedDeviceId } : {}),
       ...(normalizedLocalRef ? { localRef: normalizedLocalRef } : {}),
@@ -204,6 +207,9 @@ export class TransactionService implements OnModuleInit {
           categoryName,
           occurredAt: this.parseOccurredAt(mapped.date, mapped.time),
           note: this.buildImportNote(mapped),
+          party: mapped.party?.trim() || undefined,
+          mode: mapped.mode?.trim() || undefined,
+          entryBy: mapped.entryby?.trim() || undefined,
           source: TransactionSource.SYNC,
           createdBy: userId,
           updatedBy: userId,
@@ -288,9 +294,37 @@ export class TransactionService implements OnModuleInit {
       }
     }
     if (query.search) {
+      const searchRegex = this.escapeRegex(query.search.trim());
       filters.$or = [
-        { categoryName: { $regex: query.search, $options: 'i' } },
-        { note: { $regex: query.search, $options: 'i' } },
+        { categoryName: { $regex: searchRegex, $options: 'i' } },
+        { note: { $regex: searchRegex, $options: 'i' } },
+        { party: { $regex: searchRegex, $options: 'i' } },
+        { mode: { $regex: searchRegex, $options: 'i' } },
+        { entryBy: { $regex: searchRegex, $options: 'i' } },
+        { type: { $regex: searchRegex, $options: 'i' } },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $toString: '$amount' },
+              regex: searchRegex,
+              options: 'i',
+            },
+          },
+        },
+        {
+          $expr: {
+            $regexMatch: {
+              input: {
+                $dateToString: {
+                  format: '%d/%m/%Y %H:%M',
+                  date: '$occurredAt',
+                },
+              },
+              regex: searchRegex,
+              options: 'i',
+            },
+          },
+        },
       ];
     }
 
@@ -316,7 +350,7 @@ export class TransactionService implements OnModuleInit {
                   },
                 },
               },
-              { $sort: { __signedAmount: sortOrder, occurredAt: -1 } },
+              { $sort: { __signedAmount: sortOrder, occurredAt: -1, _id: -1 } },
               { $skip: skip },
               { $limit: limit },
               { $project: { __signedAmount: 0 } },
@@ -324,12 +358,12 @@ export class TransactionService implements OnModuleInit {
             .exec()
         : this.transactionModel
             .find(filters)
-            .sort({ [sortBy]: sortOrder })
+            .sort(sortBy === 'occurredAt' ? { occurredAt: sortOrder, _id: sortOrder } : { [sortBy]: sortOrder, occurredAt: -1, _id: -1 })
             .skip(skip)
             .limit(limit)
             .exec();
 
-    const [items, total, summaryRows] = await Promise.all([
+    const [items, total, summaryRows, balanceRows] = await Promise.all([
       itemsPromise,
       this.transactionModel.countDocuments(filters).exec(),
       this.transactionModel.aggregate([
@@ -341,13 +375,29 @@ export class TransactionService implements OnModuleInit {
           },
         },
       ]),
+      this.transactionModel
+        .find(filters)
+        .select({ _id: 1, type: 1, amount: 1, occurredAt: 1 })
+        .sort({ occurredAt: 1, _id: 1 })
+        .lean()
+        .exec(),
     ]);
+
+    let runningBalance = 0;
+    const balanceById = new Map<string, number>();
+    for (const row of balanceRows) {
+      runningBalance += row.type === CategoryType.CASH_IN ? row.amount : row.amount * -1;
+      balanceById.set(String(row._id), runningBalance);
+    }
 
     const totalIn = summaryRows.find((row) => row._id === 'cash-in')?.total ?? 0;
     const totalOut = summaryRows.find((row) => row._id === 'cash-out')?.total ?? 0;
 
     return {
-      items,
+      items: items.map((item) => ({
+        ...item.toObject?.() ?? item,
+        runningBalance: balanceById.get(String(item._id ?? item.id)) ?? 0,
+      })),
       page,
       limit,
       total,
@@ -391,6 +441,15 @@ export class TransactionService implements OnModuleInit {
     }
     if (typeof dto.note !== 'undefined') {
       transaction.note = dto.note;
+    }
+    if (typeof dto.party !== 'undefined') {
+      transaction.party = dto.party?.trim() || undefined;
+    }
+    if (typeof dto.mode !== 'undefined') {
+      transaction.mode = dto.mode?.trim() || undefined;
+    }
+    if (typeof dto.entryBy !== 'undefined') {
+      transaction.entryBy = dto.entryBy?.trim() || undefined;
     }
     if (dto.source) {
       transaction.source = dto.source;
@@ -499,6 +558,10 @@ export class TransactionService implements OnModuleInit {
 
     values.push(current.trim());
     return values;
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private normalizeHeader(value: string): string {
@@ -690,19 +753,7 @@ export class TransactionService implements OnModuleInit {
   }
 
   private buildImportNote(mapped: Record<string, string>): string | undefined {
-    const parts = [mapped.remark];
-
-    if (mapped.party) {
-      parts.push(`Party: ${mapped.party}`);
-    }
-    if (mapped.mode) {
-      parts.push(`Mode: ${mapped.mode}`);
-    }
-    if (mapped.entryby) {
-      parts.push(`Entry By: ${mapped.entryby}`);
-    }
-
-    const note = parts.filter(Boolean).join(' | ').trim();
+    const note = (mapped.remark || '').trim();
     return note || undefined;
   }
 }

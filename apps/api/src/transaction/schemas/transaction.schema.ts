@@ -30,6 +30,15 @@ export class Transaction extends Document {
   @Prop()
   note?: string;
 
+  @Prop()
+  party?: string;
+
+  @Prop()
+  mode?: string;
+
+  @Prop()
+  entryBy?: string;
+
   @Prop({ type: String, enum: TransactionSource, default: TransactionSource.MANUAL })
   source: TransactionSource;
 

@@ -6,7 +6,11 @@ export interface CashTransaction {
   amount: number;
   category: string;
   timestamp: string;
+  runningBalance?: number;
   note?: string;
+  party?: string;
+  mode?: string;
+  entryBy?: string;
 }
 
 export interface ReportSummary {

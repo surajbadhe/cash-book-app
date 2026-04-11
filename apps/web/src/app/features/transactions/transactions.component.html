@@ -4,39 +4,113 @@
       <h1 class="page-title">Transactions</h1>
       <p class="page-sub">Track every cash movement</p>
     </div>
-    <div class="header-actions">
-      <input #csvInput type="file" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values" hidden (change)="onImportFileSelected($event)" />
-      <div class="actions-left">
-        <button class="btn-add" type="button" (click)="triggerImport(csvInput)" [disabled]="importing || noBusinessAccess" [attr.aria-busy]="importing" style="background:#fff;color:#334155;border:1.5px solid #cbd5e1;">
-          @if (importing) {
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="animation:spin 0.9s linear infinite;">
-              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" opacity="0.25"/>
-              <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-            </svg>
-          } @else {
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>
-            </svg>
-          }
-          {{ importing ? 'Importing' : 'Import CSV' }}
-        </button>
-        <a href="assets/samples/transactions-sample.csv" download style="display:flex;align-items:center;gap:6px;padding:10px 16px;background:#f1f5f9;color:#475569;border:1.5px solid #cbd5e1;border-radius:12px;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;" onclick=";">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          Template
-        </a>
-      </div>
-      <button class="btn-add" (click)="openAddModal()" [disabled]="noBusinessAccess">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-        Add entry
+    <div class="header-actions screenshot-actions">
+      <button
+        class="btn-action"
+        type="button"
+        (click)="triggerImport(importFileInput)"
+        [disabled]="noBusinessAccess || dataMode !== 'cloud' || importing"
+        [title]="dataMode !== 'cloud' ? 'Import is available in cloud mode only' : 'Import transactions from CSV/TSV/TXT'"
+        style="background:#334155;color:#fff;min-width:130px;"
+      >
+        {{ importing ? 'Importing…' : 'Import CSV' }}
       </button>
+      <button class="btn-action in" type="button" (click)="openAddModalWithType('cash-in')" [disabled]="noBusinessAccess">
+        + Cash In
+      </button>
+      <button class="btn-action out" type="button" (click)="openAddModalWithType('cash-out')" [disabled]="noBusinessAccess">
+        − Cash Out
+      </button>
+      <input
+        #importFileInput
+        type="file"
+        accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain"
+        (change)="onImportFileSelected($event)"
+        hidden
+      />
     </div>
   </div>
 
-  <p style="margin:-8px 0 16px;font-size:12px;color:#64748b;">Need the right format? <a href="assets/samples/transactions-sample.csv" download style="color:#4f46e5;font-weight:600;">Download sample CSV template</a>.</p>
+  <div class="top-filters">
+    <select [value]="durationFilter" (change)="onDurationFilterChange(($any($event.target).value))">
+      @for (option of durationOptions; track option.value) {
+        <option [value]="option.value">Duration: {{ option.label }}</option>
+      }
+    </select>
+
+    <select [value]="filterType" (change)="setFilter($any($event.target).value)">
+      <option value="all">Types: All</option>
+      <option value="cash-in">Types: Cash In</option>
+      <option value="cash-out">Types: Cash Out</option>
+    </select>
+
+    <select [value]="partyFilter" (change)="onPartyFilterChange(($any($event.target).value))">
+      <option value="">Parties: All</option>
+      @for (party of filterPartyOptions; track party) {
+        <option [value]="party">Parties: {{ party }}</option>
+      }
+    </select>
+
+    <select [value]="memberFilter" (change)="onMemberFilterChange(($any($event.target).value))">
+      <option value="">Members: All</option>
+      @for (member of filterMemberOptions; track member) {
+        <option [value]="member">Members: {{ member }}</option>
+      }
+    </select>
+
+    <select [value]="paymentModeFilter" (change)="onPaymentModeFilterChange(($any($event.target).value))">
+      <option value="">Payment Modes: All</option>
+      @for (mode of filterPaymentModeOptions; track mode) {
+        <option [value]="mode">Payment Modes: {{ mode }}</option>
+      }
+    </select>
+
+    <select [value]="categoryFilter" (change)="onCategoryFilterChange(($any($event.target).value))">
+      <option value="">Categories: All</option>
+      @for (category of filterCategoryOptions; track category) {
+        <option [value]="category">Categories: {{ category }}</option>
+      }
+    </select>
+  </div>
+
+  <div class="search-row">
+    <input
+      type="text"
+      [value]="searchTerm"
+      (input)="onSearchInput(($any($event.target).value))"
+      placeholder="Search by remark or amount..."
+    />
+  </div>
+
+  <div class="summary-strip">
+    <div class="summary-item cash-in">
+      <div class="summary-icon" aria-hidden="true">
+        <span class="material-symbols-outlined">add</span>
+      </div>
+      <div class="summary-content">
+        <div class="summary-label">Cash In</div>
+        <div class="summary-value">{{ formatCurrency(totalCashIn) }}</div>
+      </div>
+    </div>
+    <div class="summary-item cash-out">
+      <div class="summary-icon" aria-hidden="true">
+        <span class="material-symbols-outlined">remove</span>
+      </div>
+      <div class="summary-content">
+        <div class="summary-label">Cash Out</div>
+        <div class="summary-value">{{ formatCurrency(totalCashOut) }}</div>
+      </div>
+    </div>
+    <div class="summary-item balance">
+      <div class="summary-icon" aria-hidden="true">
+        <span class="material-symbols-outlined">equal</span>
+      </div>
+      <div class="summary-content">
+        <div class="summary-label">Net Balance</div>
+        <div class="summary-value">{{ formatCurrency(netBalance) }}</div>
+      </div>
+    </div>
+  </div>
 
   @if (importSuccessMessage) {
     <div style="padding:10px 12px;border-radius:12px;font-size:13px;font-weight:500;margin-bottom:16px;background:rgba(16,185,129,0.08);color:#047857;border:1px solid rgba(16,185,129,0.18);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
@@ -178,9 +252,32 @@
           <div class="form-row">
             <div class="form-field">
               <label>Date & Time</label>
-              <input type="datetime-local" formControlName="timestamp" />
+              <input type="datetime-local" formControlName="timestamp" step="60" />
             </div>
 
+            <div class="form-field">
+              <label>Party <span class="opt">(optional)</span></label>
+              <input type="text" formControlName="party" placeholder="e.g. Walk-in / Fresh Farm" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label>Mode</label>
+              <select formControlName="mode">
+                @for (mode of modeOptions; track mode) {
+                  <option [value]="mode">{{ mode }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label>Entry By</label>
+              <input type="text" formControlName="entryBy" placeholder="e.g. Owner" />
+            </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-field">
               <label>Note <span class="opt">(optional)</span></label>
               <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
@@ -276,9 +373,32 @@
           <div class="form-row">
             <div class="form-field">
               <label>Date & Time</label>
-              <input type="datetime-local" formControlName="timestamp" />
+              <input type="datetime-local" formControlName="timestamp" step="60" />
             </div>
 
+            <div class="form-field">
+              <label>Party <span class="opt">(optional)</span></label>
+              <input type="text" formControlName="party" placeholder="e.g. Walk-in / Fresh Farm" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-field">
+              <label>Mode</label>
+              <select formControlName="mode">
+                @for (mode of modeOptions; track mode) {
+                  <option [value]="mode">{{ mode }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-field">
+              <label>Entry By</label>
+              <input type="text" formControlName="entryBy" placeholder="e.g. Owner" />
+            </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-field">
               <label>Note <span class="opt">(optional)</span></label>
               <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
@@ -298,214 +418,75 @@
     </div>
   }
 
-  <div class="filters">
-    <button class="filter-btn" [class.active]="filterType === 'all'" (click)="setFilter('all')">All</button>
-    <button class="filter-btn in" [class.active]="filterType === 'cash-in'" (click)="setFilter('cash-in')">Cash In</button>
-    <button class="filter-btn out" [class.active]="filterType === 'cash-out'" (click)="setFilter('cash-out')">Cash Out</button>
-  </div>
-
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;">
-    <input
-      type="text"
-      placeholder="Search category or note"
-      [value]="searchTerm"
-      (input)="onSearchInput($any($event.target).value)"
-      style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;min-width:0;"
-    />
-
-    <select
-      [value]="categoryFilter"
-      (change)="onCategoryFilterChange($any($event.target).value)"
-      style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fff;min-width:0;"
-    >
-      <option value="">All categories</option>
-      @for (category of filterCategoryOptions; track category) {
-        <option [value]="category">{{ getCategoryLabel(category) }}</option>
-      }
-    </select>
-
-    <select
-      [value]="selectedSortOption"
-      (change)="onSortChange($any($event.target).value)"
-      style="padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#fff;min-width:0;"
-    >
-      <option value="occurredAt:desc">Date: Newest</option>
-      <option value="occurredAt:asc">Date: Oldest</option>
-      <option value="amount:desc">Amount: High to Low</option>
-      <option value="amount:asc">Amount: Low to High</option>
-      <option value="categoryName:asc">Category: A-Z</option>
-      <option value="categoryName:desc">Category: Z-A</option>
-    </select>
-  </div>
-
-  <!-- Date range presets -->
-  <div style="margin:-4px 0 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-    @for (preset of datePresets; track preset.value) {
-      <button
-        type="button"
-        (click)="applyDatePreset(preset.value)"
-        [style]="'padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid ' + (datePreset === preset.value ? '#6366f1' : '#e2e8f0') + ';background:' + (datePreset === preset.value ? '#6366f1' : '#fff') + ';color:' + (datePreset === preset.value ? '#fff' : '#475569') + ';'"
-      >
-        {{ preset.label }}
-      </button>
-    }
-  </div>
-
-  @if (datePreset === 'custom') {
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
-      <div style="display:flex;align-items:center;gap:6px;">
-        <label style="font-size:12px;color:#64748b;white-space:nowrap;">From</label>
-        <input
-          type="date"
-          [value]="fromDate"
-          (change)="onDateFilterChange('from', $any($event.target).value)"
-          style="padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;"
-        />
+  <div class="card txn-grid-card" style="overflow:hidden;">
+    @if (loading) {
+      <div class="skeleton-rows" style="padding:12px;">
+        @for (_ of [1,2,3,4,5]; track _) {
+          <div class="skeleton-row"></div>
+        }
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <label style="font-size:12px;color:#64748b;white-space:nowrap;">To</label>
-        <input
-          type="date"
-          [value]="toDate"
-          (change)="onDateFilterChange('to', $any($event.target).value)"
-          style="padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;"
-        />
+    } @else if (pagedTransactions.length === 0) {
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
+          <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        <p>No transactions found.</p>
       </div>
-    </div>
-  }
-
-  <div style="display:flex;justify-content:flex-end;margin:-6px 0 14px;">
-    <button
-      type="button"
-      (click)="resetFilters()"
-      style="background:transparent;border:none;color:#6366f1;font-size:12px;font-weight:600;cursor:pointer;padding:0;"
-    >
-      Reset filters
-    </button>
-  </div>
-
-  @if (loading) {
-    <div class="skeleton-rows">
-      @for (_ of [1,2,3,4,5]; track _) {
-        <div class="skeleton-row"></div>
-      }
-    </div>
-  } @else if (pagedTransactions.length === 0) {
-    <div class="empty-state">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5">
-        <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-      </svg>
-      <p>No transactions found.</p>
-    </div>
-  } @else {
-    @if (selectedCount > 0) {
-      <div style="padding:10px 12px;border-radius:12px;font-size:12px;margin-bottom:14px;background:#6366f1;color:#fff;display:flex;justify-content:space-between;align-items:center;">
-        <span>{{ selectedCount }} transaction(s) selected</span>
-        <button
-          type="button"
-          (click)="showBulkDeleteConfirmDialog()"
-          style="background:#dc2626;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
-        >
-          Delete Selected
-        </button>
-      </div>
-    }
-
-    <div class="txn-list card">
-      @if (dataMode === 'cloud') {
-        <div style="padding:12px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px;background:#f8fafc;">
-          <input
-            type="checkbox"
-            [checked]="isAllSelected"
-            (change)="toggleSelectAll()"
-            style="cursor:pointer;width:16px;height:16px;"
-          />
-          <span style="font-size:12px;color:#64748b;font-weight:500;">Select All</span>
+    } @else {
+      <div class="list-toolbar">
+        <span>Showing {{ startItemIndex }} - {{ endItemIndex }} of {{ totalItems }} entries</span>
+        <div class="pager-controls">
+          <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1">‹</button>
+          <span>Page {{ currentPage }} of {{ totalPages }}</span>
+          <button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages">›</button>
         </div>
-      }
-      @for (t of pagedTransactions; track t.id) {
-        <div class="txn-row" [style.background-color]="isSelected(t.id) ? 'rgba(99, 102, 241, 0.05)' : 'transparent'">
-          @if (dataMode === 'cloud') {
-            <input
-              type="checkbox"
-              [checked]="isSelected(t.id)"
-              (change)="toggleSelect(t.id)"
-              style="cursor:pointer;width:16px;height:16px;flex-shrink:0;"
-            />
-          }
-          <div class="txn-icon" [class.out]="t.type === 'cash-out'">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              @if (t.type === 'cash-in') {
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-              } @else {
-                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
-              }
-            </svg>
-          </div>
-          <div class="txn-body">
-            <p class="txn-cat">{{ t.category }}</p>
-            <p class="txn-meta">{{ t.timestamp | date: 'MMM d · h:mm a' }}@if (t.note) { · {{ t.note }} }</p>
-          </div>
-          <div class="txn-right">
-            <p class="txn-amount" [class.out]="t.type === 'cash-out'">
-              {{ t.type === 'cash-in' ? '+' : '-' }}{{ t.amount | currency: currencyCode : 'symbol' : '1.0-2' }}
-            </p>
-            @if (dataMode === 'cloud') {
-              <button class="btn-delete" (click)="openEdit(t)" title="Edit" style="color:#6366f1;cursor:pointer;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
+      </div>
+
+      @if (selectedCount > 0 && dataMode === 'cloud') {
+        <div style="padding:10px 12px;font-size:12px;background:#6366f1;color:#fff;display:flex;justify-content:space-between;align-items:center;">
+          <span>{{ selectedCount }} transaction(s) selected</span>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button
+              type="button"
+              (click)="showBulkDeleteConfirmDialog()"
+              style="background:#dc2626;color:#fff;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;"
+            >
+              Delete Selected
+            </button>
+            @if (isAllSelected && canDeleteAllMatching) {
+              <button
+                type="button"
+                (click)="showDeleteAllMatchingConfirmDialog()"
+                [disabled]="bulkDeleteInProgress"
+                style="background:#b91c1c;color:#fff;border:none;padding:6px 10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"
+              >
+                Delete All Matching ({{ totalItems | number }})
               </button>
             }
-            <button class="btn-delete" (click)="delete(t.id)" title="Delete">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
-              </svg>
-            </button>
           </div>
         </div>
       }
-    </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap;">
-      <div style="font-size:12px;color:#64748b;">
-        Showing {{ startItemIndex }}-{{ endItemIndex }} of {{ totalItems }}
-      </div>
-
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label style="font-size:12px;color:#64748b;">Rows</label>
-        <select
-          [value]="pageSize"
-          (change)="onPageSizeChange($any($event.target).value)"
-          style="padding:6px 8px;border:1px solid #e2e8f0;border-radius:8px;font-size:12px;background:#fff;"
-        >
-          <option value="10">10</option>
-          <option value="20">20</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-        </select>
-
-        <button
-          type="button"
-          (click)="goToPage(currentPage - 1)"
-          [disabled]="currentPage <= 1"
-          style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;font-size:12px;color:#334155;cursor:pointer;"
-        >
-          Prev
-        </button>
-        <span style="font-size:12px;color:#334155;min-width:70px;text-align:center;">{{ currentPage }} / {{ totalPages }}</span>
-        <button
-          type="button"
-          (click)="goToPage(currentPage + 1)"
-          [disabled]="currentPage >= totalPages"
-          style="padding:7px 10px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;font-size:12px;color:#334155;cursor:pointer;"
-        >
-          Next
-        </button>
-      </div>
-    </div>
-  }
+      <ag-grid-angular
+        class="ag-theme-quartz"
+        style="width:100%;height:620px;"
+        [modules]="agGridModules"
+        [rowData]="gridRows"
+        [columnDefs]="transactionColumnDefs"
+        [defaultColDef]="defaultColDef"
+        [rowHeight]="gridRowHeight"
+        [headerHeight]="gridHeaderHeight"
+        [getRowId]="getRowId"
+        [suppressHorizontalScroll]="true"
+        [suppressRowClickSelection]="true"
+        rowSelection="multiple"
+        (gridReady)="onGridReady($event)"
+        (firstDataRendered)="onWindowResize()"
+        (selectionChanged)="onGridSelectionChanged($event)"
+        (cellClicked)="onGridCellClicked($event)"
+      ></ag-grid-angular>
+    }
+  </div>
 
   @if (toastMessage) {
     <div [style]="'position:fixed;bottom:20px;right:20px;z-index:1000;animation:slideIn 0.3s ease-out;' + (toastType === 'success' ? 'background:#10b981;' : 'background:#ef4444;')">
@@ -529,13 +510,22 @@
   @if (showBulkDeleteConfirm) {
     <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:999;">
       <div style="background:#fff;border-radius:16px;padding:20px;max-width:400px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
-        <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#0f172a;">Delete {{ selectedCount }} Transaction(s)?</h2>
-        <p style="margin:0 0 20px;font-size:14px;color:#64748b;">This action cannot be undone. These transactions will be permanently deleted.</p>
+        <h2 style="margin:0 0 12px;font-size:18px;font-weight:700;color:#0f172a;">
+          {{ bulkDeleteMode === 'all' ? 'Delete all matching transactions?' : 'Delete selected transactions?' }}
+        </h2>
+        <p style="margin:0 0 20px;font-size:14px;color:#64748b;">
+          @if (bulkDeleteMode === 'all') {
+            This will delete all {{ totalItems | number }} matching records across pages. This action cannot be undone.
+          } @else {
+            This will delete {{ selectedCount | number }} selected record(s). This action cannot be undone.
+          }
+        </p>
         
         <div style="display:flex;gap:8px;justify-content:flex-end;">
           <button
             type="button"
             (click)="cancelBulkDelete()"
+            [disabled]="bulkDeleteInProgress"
             style="padding:10px 16px;background:#e2e8f0;color:#334155;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;"
           >
             Cancel
@@ -543,9 +533,10 @@
           <button
             type="button"
             (click)="confirmBulkDelete()"
-            style="padding:10px 16px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;"
+            [disabled]="bulkDeleteInProgress || (bulkDeleteMode === 'selected' && selectedCount === 0) || (bulkDeleteMode === 'all' && totalItems === 0)"
+            style="padding:10px 16px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;"
           >
-            Delete {{ selectedCount }}
+            {{ bulkDeleteInProgress ? 'Deleting...' : (bulkDeleteMode === 'all' ? 'Delete All (' + (totalItems | number) + ')' : 'Delete Selected (' + (selectedCount | number) + ')') }}
           </button>
         </div>
       </div>

@@ -27,8 +27,19 @@ export class AuthService {
 
   private accessTokenSubject = new BehaviorSubject<string | null>(null);
   public accessToken$ = this.accessTokenSubject.asObservable();
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private refreshInProgress = false;
+  private lastActivityAt = Date.now();
+  private readonly refreshSkewMs = 60_000;
+  private readonly activeWindowMs = 15 * 60 * 1000;
+  private readonly activityRefreshThresholdMs = 2 * 60 * 1000;
+  private readonly activityHandler = () => {
+    this.lastActivityAt = Date.now();
+    this.refreshIfTokenNearExpiry();
+  };
 
   constructor() {
+    this.setupActivityTracking();
     // Try to restore user session on app init
     this.restoreSession();
   }
@@ -152,6 +163,7 @@ export class AuthService {
           if (response.success && response.data.accessToken) {
             this.accessTokenSubject.next(response.data.accessToken);
             localStorage.setItem('accessToken', response.data.accessToken);
+            this.scheduleTokenRefresh(response.data.accessToken);
             return { accessToken: response.data.accessToken };
           }
           return null;
@@ -250,6 +262,8 @@ export class AuthService {
     this.currentUserSubject.next(user);
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('user', JSON.stringify(user));
+    this.lastActivityAt = Date.now();
+    this.scheduleTokenRefresh(accessToken);
   }
 
   private normalizeUser(user: User & { sub?: string }): User {
@@ -268,6 +282,11 @@ export class AuthService {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
     localStorage.removeItem('currentBusinessId');
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+    this.refreshInProgress = false;
   }
 
   /**
@@ -282,12 +301,105 @@ export class AuthService {
         const user = JSON.parse(userStr);
         this.accessTokenSubject.next(token);
         this.currentUserSubject.next(this.normalizeUser(user));
+        this.lastActivityAt = Date.now();
+        this.scheduleTokenRefresh(token);
         
         // Verify session is still valid
         this.getCurrentUser().subscribe();
       } catch (error) {
         this.clearSession();
       }
+    }
+  }
+
+  private setupActivityTracking(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const options: AddEventListenerOptions = { passive: true };
+    window.addEventListener('click', this.activityHandler, options);
+    window.addEventListener('keydown', this.activityHandler, options);
+    window.addEventListener('mousemove', this.activityHandler, options);
+    window.addEventListener('scroll', this.activityHandler, options);
+    window.addEventListener('touchstart', this.activityHandler, options);
+  }
+
+  private scheduleTokenRefresh(token: string): void {
+    const expiresAt = this.getTokenExpiryMs(token);
+    if (!expiresAt) {
+      return;
+    }
+
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
+
+    const delayMs = Math.max(expiresAt - Date.now() - this.refreshSkewMs, 5_000);
+    this.refreshTimer = setTimeout(() => {
+      const currentToken = this.accessToken;
+      if (!currentToken) {
+        return;
+      }
+
+      const isUserActive = Date.now() - this.lastActivityAt <= this.activeWindowMs;
+      if (!isUserActive) {
+        this.scheduleTokenRefresh(currentToken);
+        return;
+      }
+
+      this.runSilentRefresh();
+    }, delayMs);
+  }
+
+  private refreshIfTokenNearExpiry(): void {
+    const token = this.accessToken;
+    if (!token || this.refreshInProgress) {
+      return;
+    }
+
+    const expiresAt = this.getTokenExpiryMs(token);
+    if (!expiresAt) {
+      return;
+    }
+
+    if (expiresAt - Date.now() <= this.activityRefreshThresholdMs) {
+      this.runSilentRefresh();
+    }
+  }
+
+  private runSilentRefresh(): void {
+    if (this.refreshInProgress) {
+      return;
+    }
+
+    this.refreshInProgress = true;
+    this.refreshToken().subscribe({
+      complete: () => {
+        this.refreshInProgress = false;
+      },
+    });
+  }
+
+  private getTokenExpiryMs(token: string): number | null {
+    try {
+      const payloadPart = token.split('.')[1];
+      if (!payloadPart) {
+        return null;
+      }
+
+      const normalized = payloadPart.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const payload = JSON.parse(atob(padded)) as { exp?: number };
+
+      if (!payload.exp) {
+        return null;
+      }
+
+      return payload.exp * 1000;
+    } catch {
+      return null;
     }
   }
 }
