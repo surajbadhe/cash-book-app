@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AsyncPipe, TitleCasePipe } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
+import { AppInstallService } from '../../../core/services/app-install.service';
 import { BusinessContextService } from '../../../core/services/business-context.service';
 import { ToastService } from '../../../core/services/toast.service';
 
@@ -14,6 +15,7 @@ import { ToastService } from '../../../core/services/toast.service';
 })
 export class ShellComponent {
   private authService = inject(AuthService);
+  installService = inject(AppInstallService);
   private businessContext = inject(BusinessContextService);
   private toastService = inject(ToastService);
   user$ = this.authService.currentUser$;
@@ -50,5 +52,10 @@ export class ShellComponent {
 
   getInitial(email: string): string {
     return email ? email[0].toUpperCase() : '?';
+  }
+
+  installApp(): void {
+    this.installService.openInstall();
+    this.closeSidebar();
   }
 }
