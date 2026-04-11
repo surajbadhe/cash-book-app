@@ -667,7 +667,9 @@
 :host ::ng-deep .txn-grid-card .ag-header-viewport,
 :host ::ng-deep .txn-grid-card .ag-header-container,
 :host ::ng-deep .txn-grid-card .ag-header-row,
-:host ::ng-deep .txn-grid-card .ag-header-cell {
+:host ::ng-deep .txn-grid-card .ag-header-cell,
+:host ::ng-deep .ag-theme-quartz .ag-header-viewport,
+:host ::ng-deep .ag-theme-quartz .ag-header-container {
   border-radius: 0 !important;
 }
 
@@ -681,7 +683,7 @@
 }
 
 :host ::ng-deep .ag-theme-quartz .ag-root-wrapper {
-  border: none;
+  border: 0;
   border-radius: 0;
 }
 
@@ -692,8 +694,7 @@
 
 :host ::ng-deep .ag-theme-quartz .ag-header-cell,
 :host ::ng-deep .ag-theme-quartz .ag-cell {
-  padding-left: 16px;
-  padding-right: 16px;
+  padding: 0 16px;
 }
 
 :host ::ng-deep .ag-theme-quartz .ag-header-cell {
@@ -706,7 +707,6 @@
   height: 100%;
   display: flex;
   align-items: center;
-  width: 100%;
 }
 
 :host ::ng-deep .ag-theme-quartz .ag-header-cell-comp-wrapper {
@@ -715,29 +715,19 @@
   align-items: center;
 }
 
-:host ::ng-deep .ag-theme-quartz .ag-header-viewport,
-:host ::ng-deep .ag-theme-quartz .ag-header-container {
-  border-radius: 0 !important;
-}
-
 :host ::ng-deep .ag-theme-quartz .ag-row {
   background: #fff;
 }
 
 :host ::ng-deep .ag-theme-quartz .ag-cell {
-  border-right: none;
+  border-right: 0;
   line-height: 1.2;
 }
 
-:host ::ng-deep .ag-theme-quartz .ag-header-cell-label {
-  margin-top: 0;
-  margin-bottom: 0;
-}
-
+:host ::ng-deep .ag-theme-quartz .ag-header-cell-label,
 :host ::ng-deep .ag-theme-quartz .ag-cell-wrapper,
 :host ::ng-deep .ag-theme-quartz .ag-cell-value {
-  margin-top: 0;
-  margin-bottom: 0;
+  margin: 0;
 }
 
 :host ::ng-deep .ag-theme-quartz .ag-cell[col-id="transaction"] {
