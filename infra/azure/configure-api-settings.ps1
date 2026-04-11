@@ -63,8 +63,8 @@ $ClientUrl = $env:CLIENT_URL
 $MongodbUri = $env:MONGODB_URI
 $JwtSecret = $env:JWT_SECRET
 
-$JwtAccessExpiry = if ($env:JWT_ACCESS_EXPIRY) { $env:JWT_ACCESS_EXPIRY } else { '15m' }
-$JwtRefreshExpiry = if ($env:JWT_REFRESH_EXPIRY) { $env:JWT_REFRESH_EXPIRY } else { '7d' }
+$JwtAccessExpiry = if ($env:JWT_ACCESS_EXPIRY) { $env:JWT_ACCESS_EXPIRY } else { '6h' }
+$JwtRefreshExpiry = if ($env:JWT_REFRESH_EXPIRY) { $env:JWT_REFRESH_EXPIRY } else { '14d' }
 $BcryptRounds = if ($env:BCRYPT_ROUNDS) { $env:BCRYPT_ROUNDS } else { '10' }
 $RateLimitTtl = if ($env:RATE_LIMIT_TTL) { $env:RATE_LIMIT_TTL } else { '60' }
 $RateLimitMax = if ($env:RATE_LIMIT_MAX) { $env:RATE_LIMIT_MAX } else { '100' }

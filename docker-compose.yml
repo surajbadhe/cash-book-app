@@ -37,8 +37,8 @@ services:
       PORT: 3000
       MONGODB_URI: mongodb://${MONGO_ROOT_USER:-admin}:${MONGO_ROOT_PASSWORD:-admin123}@mongodb:27017/${MONGO_DATABASE:-cash-flow}?authSource=admin
       JWT_SECRET: ${JWT_SECRET:-your-secret-key-change-in-production}
-      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
-      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-7d}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-6h}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-14d}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/auth/google/callback}

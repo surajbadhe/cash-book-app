@@ -162,8 +162,8 @@ MONGO_DATABASE=cash-flow
 
 # JWT
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=7d
+JWT_ACCESS_EXPIRY=6h
+JWT_REFRESH_EXPIRY=14d
 
 # OAuth - Google
 GOOGLE_CLIENT_ID=your-google-client-id

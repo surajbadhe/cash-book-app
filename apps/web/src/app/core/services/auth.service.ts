@@ -30,9 +30,10 @@ export class AuthService {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshInProgress = false;
   private lastActivityAt = Date.now();
-  private readonly refreshSkewMs = 60_000;
-  private readonly activeWindowMs = 15 * 60 * 1000;
-  private readonly activityRefreshThresholdMs = 2 * 60 * 1000;
+  private readonly refreshSkewMs = 5 * 60 * 1000;
+  private readonly activeWindowMs = 8 * 60 * 60 * 1000;
+  private readonly activityRefreshThresholdMs = 10 * 60 * 1000;
+  private readonly inactiveRetryMs = 10 * 60 * 1000;
   private readonly activityHandler = () => {
     this.lastActivityAt = Date.now();
     this.refreshIfTokenNearExpiry();
@@ -345,7 +346,17 @@ export class AuthService {
 
       const isUserActive = Date.now() - this.lastActivityAt <= this.activeWindowMs;
       if (!isUserActive) {
-        this.scheduleTokenRefresh(currentToken);
+        if (this.refreshTimer) {
+          clearTimeout(this.refreshTimer);
+        }
+
+        this.refreshTimer = setTimeout(() => {
+          const latestToken = this.accessToken;
+          if (!latestToken) {
+            return;
+          }
+          this.scheduleTokenRefresh(latestToken);
+        }, this.inactiveRetryMs);
         return;
       }
 

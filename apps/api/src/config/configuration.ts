@@ -1,4 +1,7 @@
-export default () => ({
+export default () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  return {
   port: parseInt(process.env.PORT, 10) || 3000,
   nodeEnv: process.env.NODE_ENV || 'development',
   
@@ -8,8 +11,8 @@ export default () => ({
   
   jwt: {
     secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-    accessTokenExpiry: process.env.JWT_ACCESS_EXPIRY || '15m',
-    refreshTokenExpiry: process.env.JWT_REFRESH_EXPIRY || '7d',
+    accessTokenExpiry: process.env.JWT_ACCESS_EXPIRY || '6h',
+    refreshTokenExpiry: process.env.JWT_REFRESH_EXPIRY || '14d',
   },
   
   oauth: {
@@ -38,13 +41,14 @@ export default () => ({
   
   cookies: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict' as const,
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    secure: isProduction,
+    sameSite: (isProduction ? 'none' : 'strict') as 'none' | 'strict',
+    maxAge: 14 * 24 * 60 * 60 * 1000, // 14 days
   },
 
   email: {
     connectionString: process.env.ACS_EMAIL_CONNECTION_STRING || '',
     senderAddress: process.env.ACS_EMAIL_SENDER_ADDRESS || '',
   },
-});
+  };
+};

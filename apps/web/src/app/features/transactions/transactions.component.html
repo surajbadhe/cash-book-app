@@ -1,4 +1,4 @@
-<div class="page">
+<div class="page transactions-page">
   <div class="page-header">
     <div>
       <h1 class="page-title">Transactions</h1>
@@ -71,6 +71,8 @@
         <option [value]="category">Categories: {{ category }}</option>
       }
     </select>
+
+    <button type="button" class="btn-reset-filters" (click)="resetFilters()">Reset Filters</button>
   </div>
 
   <div class="search-row">
@@ -80,6 +82,9 @@
       (input)="onSearchInput(($any($event.target).value))"
       placeholder="Search by remark or amount..."
     />
+    @if (searchTerm.trim()) {
+      <button type="button" class="btn-clear-search" (click)="clearSearch()" aria-label="Clear search">Clear</button>
+    }
   </div>
 
   <div class="summary-strip">
@@ -436,9 +441,34 @@
       <div class="list-toolbar">
         <span>Showing {{ startItemIndex }} - {{ endItemIndex }} of {{ totalItems }} entries</span>
         <div class="pager-controls">
+          <label class="pager-label" for="page-size-select">Rows</label>
+          <select
+            id="page-size-select"
+            class="pager-select"
+            [value]="pageSize"
+            (change)="onPageSizeChange(($any($event.target).value))"
+          >
+            @for (size of pageSizeOptions; track size) {
+              <option [value]="size">{{ size }}</option>
+            }
+          </select>
+
           <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1">‹</button>
           <span>Page {{ currentPage }} of {{ totalPages }}</span>
           <button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages">›</button>
+
+          <label class="pager-label" for="page-jump-input">Go to</label>
+          <input
+            id="page-jump-input"
+            class="pager-input"
+            type="number"
+            min="1"
+            [max]="totalPages"
+            [value]="pageJumpInput"
+            (input)="pageJumpInput = ($any($event.target).value)"
+            (keydown.enter)="jumpToPage(pageJumpInput)"
+          />
+          <button type="button" class="pager-go" (click)="jumpToPage(pageJumpInput)">Go</button>
         </div>
       </div>
 
@@ -468,7 +498,7 @@
       }
 
       <ag-grid-angular
-        class="ag-theme-quartz"
+        class="transactions-grid ag-theme-quartz"
         style="width:100%;height:620px;"
         [modules]="agGridModules"
         [rowData]="gridRows"

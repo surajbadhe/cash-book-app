@@ -155,7 +155,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   sortBy: 'occurredAt' | 'amount' | 'categoryName' = 'occurredAt';
   sortOrder: 'asc' | 'desc' = 'desc';
   currentPage = 1;
-  pageSize = 20;
+  pageSize = 50;
+  readonly pageSizeOptions = [20, 50, 100, 200];
+  pageJumpInput = '1';
   totalItems = 0;
   remoteSummary = { totalIn: 0, totalOut: 0, net: 0 };
   private activeBusinessId: string | null = null;
@@ -219,6 +221,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         display: 'flex',
         alignItems: 'center',
       },
+      cellRenderer: (params: { data?: { details?: string; entryBy?: string } }) =>
+        this.renderDetailsCell(params.data?.details, params.data?.entryBy),
     },
     {
       headerName: 'Category',
@@ -245,8 +249,8 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       field: 'transaction',
       minWidth: 110,
       flex: 1,
-      headerClass: 'col-header-right',
-      cellClass: 'col-cell-right',
+      headerClass: ['ag-right-aligned-header', 'col-header-right'],
+      cellClass: ['ag-right-aligned-cell', 'col-cell-right'],
       cellStyle: {
         display: 'flex',
         alignItems: 'center',
@@ -256,7 +260,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       cellRenderer: (params: { value: number | null | undefined }) => {
         const numericValue = Number(params.value);
         const color = numericValue >= 0 ? '#059669' : '#dc2626';
-        return `<span style="color:${color};font-weight:700;">${this.formatSignedAmount(params.value)}</span>`;
+        return `<span style="display:inline-block;width:100%;text-align:right;color:${color};font-weight:700;">${this.formatSignedAmount(params.value)}</span>`;
       },
     },
     {
@@ -264,9 +268,11 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       field: 'balance',
       minWidth: 120,
       flex: 1,
-      headerClass: 'col-header-right',
-      cellClass: 'col-cell-right',
+      headerClass: ['ag-right-aligned-header', 'col-header-right'],
+      cellClass: ['ag-right-aligned-cell', 'col-cell-right'],
       valueFormatter: (params) => this.formatAmount(params.value),
+      cellRenderer: (params: { value: number | null | undefined }) =>
+        `<span style="display:inline-block;width:100%;text-align:right;color:#0f172a;font-weight:700;">${this.formatAmount(params.value)}</span>`,
       cellStyle: {
         display: 'flex',
         alignItems: 'center',
@@ -888,6 +894,19 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     }, 350);
   }
 
+  clearSearch(): void {
+    if (!this.searchTerm.trim()) {
+      return;
+    }
+
+    this.searchTerm = '';
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
+    this.refreshFilters();
+  }
+
   onCategoryFilterChange(value: string): void {
     this.categoryFilter = value;
     this.refreshFilters();
@@ -1001,6 +1020,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
     this.pageSize = parsed;
     this.currentPage = 1;
+    this.pageJumpInput = '1';
     this.refreshFilters(false);
   }
 
@@ -1011,9 +1031,20 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     }
 
     this.currentPage = target;
+    this.pageJumpInput = String(target);
     if (this.dataMode === 'cloud') {
       this.loadRemote();
     }
+  }
+
+  jumpToPage(value: string): void {
+    const parsed = Number(value);
+    if (Number.isNaN(parsed)) {
+      this.pageJumpInput = String(this.currentPage);
+      return;
+    }
+
+    this.goToPage(parsed);
   }
 
   get selectedSortOption(): string {
@@ -1462,7 +1493,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
             this.transactions = transactions.items.map(mapTransactionItemToCashTransaction);
             this.currentPage = transactions.page;
-            this.pageSize = transactions.limit;
+            if (!this.pageSizeOptions.includes(this.pageSize)) {
+              this.pageSize = transactions.limit;
+            }
+            this.pageJumpInput = String(this.currentPage);
             this.totalItems = transactions.total;
             this.remoteSummary = transactions.summary;
             this.currencyCode = settings?.currency || 'INR';
@@ -1583,6 +1617,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   private refreshFilters(resetPage: boolean = true): void {
     if (resetPage) {
       this.currentPage = 1;
+      this.pageJumpInput = '1';
     }
 
     if (this.dataMode === 'cloud' && this.user && this.isOnline) {
@@ -1594,6 +1629,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     if (this.currentPage > this.totalPages) {
       this.currentPage = this.totalPages;
     }
+    this.pageJumpInput = String(this.currentPage);
   }
 
   private showToast(message: string, type: 'success' | 'error' = 'success'): void {
@@ -1761,6 +1797,25 @@ export class TransactionsComponent implements OnInit, OnDestroy {
       <span style="display:block;font-weight:600;color:#0f172a;">${dateLabel}</span>
       <span style="display:block;font-size:12px;color:#64748b;margin-top:2px;">${timeLabel}</span>
     </div>`;
+  }
+
+  private renderDetailsCell(details: string | null | undefined, entryBy: string | null | undefined): string {
+    const detailsLabel = this.escapeHtml(details?.trim() || '-');
+    const entryByLabel = this.escapeHtml(entryBy?.trim() || '-');
+
+    return `<div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;height:100%;width:100%;line-height:1.2;">
+      <span style="display:block;color:#0f172a;">${detailsLabel}</span>
+      <span style="display:block;font-size:13px;color:#64748b;margin-top:2px;">by ${entryByLabel}</span>
+    </div>`;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private renderRowActions(transaction: CashTransaction | undefined): HTMLElement | string {
