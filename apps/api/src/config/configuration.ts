@@ -34,6 +34,10 @@ export default () => {
     rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX, 10) || 10,
   },
   
+  client: {
+    url: process.env.CLIENT_URL || 'http://localhost:4200',
+  },
+
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
     credentials: true,

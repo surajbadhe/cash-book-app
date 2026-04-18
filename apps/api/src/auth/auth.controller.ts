@@ -205,11 +205,11 @@ export class AuthController {
       this.setRefreshTokenCookie(res, result.refreshToken);
 
       // Redirect to frontend with access token
-      const clientUrl = this.configService.get<string>('cors.origin');
+      const clientUrl = this.configService.get<string>('client.url');
       res.redirect(`${clientUrl}/auth/callback?token=${result.accessToken}`);
       return;
     } catch (error: any) {
-      const clientUrl = this.configService.get<string>('cors.origin');
+      const clientUrl = this.configService.get<string>('client.url');
       const message = encodeURIComponent(error?.message || 'OAuth login failed');
       res.redirect(`${clientUrl}/auth/callback?error=${message}`);
       return;
