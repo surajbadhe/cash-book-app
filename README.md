@@ -124,7 +124,7 @@ A modern, full-stack cash flow tracking application built to help users manage i
 
 ```bash
 # Clone repository
-git clone <your-repo-url>
+git clone https://github.com/AkashBadhe/cash-book-app.git
 cd cash-flow
 
 # Install pnpm globally if not already installed
