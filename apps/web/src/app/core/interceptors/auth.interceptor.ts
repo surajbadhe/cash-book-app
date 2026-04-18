@@ -33,7 +33,8 @@ export const authInterceptor: HttpInterceptorFn = (
     req.url.includes('/auth/forgot-password') ||
     req.url.includes('/auth/reset-password') ||
     req.url.includes('/auth/google') ||
-    req.url.includes('/auth/github');
+    req.url.includes('/auth/github') ||
+    req.url.includes('/invites/preview');
 
   // Clone request and add Authorization header if token exists
   const token = authService.accessToken;

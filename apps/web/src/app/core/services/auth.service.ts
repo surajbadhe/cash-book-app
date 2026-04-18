@@ -21,6 +21,8 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly apiUrl = `${environment.apiUrl}/auth`;
+  private readonly pendingBookKey = 'pendingBookId';
+  private readonly legacyPendingShopKey = 'pendingShopId';
 
   private currentUserSubject = new BehaviorSubject<User | null>(null);
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -204,7 +206,35 @@ export class AuthService {
    * OAuth login (Google/GitHub)
    */
   loginWithOAuth(provider: 'google' | 'github'): void {
+    const currentShopFromUrl = typeof window !== 'undefined'
+      ? (new URLSearchParams(window.location.search).get('book') || new URLSearchParams(window.location.search).get('shop'))
+      : '';
+    if (currentShopFromUrl) {
+      this.setPendingShopId(currentShopFromUrl);
+    }
     window.location.href = environment.oauth[`${provider}Url`];
+  }
+
+  setPendingShopId(shopId: string | null): void {
+    if (shopId?.trim()) {
+      localStorage.setItem(this.pendingBookKey, shopId.trim());
+      localStorage.removeItem(this.legacyPendingShopKey);
+      return;
+    }
+
+    localStorage.removeItem(this.pendingBookKey);
+    localStorage.removeItem(this.legacyPendingShopKey);
+  }
+
+  getPendingShopId(): string {
+    return localStorage.getItem(this.pendingBookKey) || localStorage.getItem(this.legacyPendingShopKey) || '';
+  }
+
+  consumePendingShopId(): string {
+    const shopId = this.getPendingShopId();
+    localStorage.removeItem(this.pendingBookKey);
+    localStorage.removeItem(this.legacyPendingShopKey);
+    return shopId;
   }
 
   setPendingInviteToken(token: string | null): void {
@@ -229,7 +259,7 @@ export class AuthService {
   /**
    * Handle OAuth callback
    */
-  handleOAuthCallback(token: string): void {
+  handleOAuthCallback(token: string, preferredShopId?: string): void {
     this.accessTokenSubject.next(token);
     localStorage.setItem('accessToken', token);
     
@@ -237,19 +267,29 @@ export class AuthService {
     this.getCurrentUser().subscribe({
       next: () => {
         const inviteToken = this.consumePendingInviteToken();
+        const shopId = preferredShopId?.trim() || this.consumePendingShopId();
         if (inviteToken) {
           this.router.navigate(['/invite/accept'], {
-            queryParams: { token: inviteToken },
+            queryParams: {
+              token: inviteToken,
+              ...(shopId ? { book: shopId } : {}),
+            },
           });
           return;
         }
 
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/transactions'], {
+          queryParams: shopId ? { book: shopId } : undefined,
+        });
       },
       error: () => {
         this.clearSession();
+        const shopId = preferredShopId?.trim() || this.getPendingShopId();
         this.router.navigate(['/login'], {
-          queryParams: { error: 'Authentication failed. Please try again.' },
+          queryParams: {
+            error: 'Authentication failed. Please try again.',
+            ...(shopId ? { book: shopId } : {}),
+          },
         });
       },
     });

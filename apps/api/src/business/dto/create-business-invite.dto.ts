@@ -3,11 +3,11 @@ import { IsEmail, IsEnum, IsOptional } from 'class-validator';
 import { BusinessMemberRole } from '../schemas/business.schema';
 
 export class CreateBusinessInviteDto {
-  @ApiProperty({ example: 'employee@example.com' })
+  @ApiProperty({ example: 'user@example.com' })
   @IsEmail()
   email: string;
 
-  @ApiPropertyOptional({ enum: [BusinessMemberRole.MANAGER, BusinessMemberRole.EMPLOYEE], default: BusinessMemberRole.EMPLOYEE })
+  @ApiPropertyOptional({ enum: [BusinessMemberRole.ADMIN, BusinessMemberRole.EDITOR, BusinessMemberRole.VIEWER], default: BusinessMemberRole.VIEWER })
   @IsOptional()
   @IsEnum(BusinessMemberRole)
   role?: BusinessMemberRole;

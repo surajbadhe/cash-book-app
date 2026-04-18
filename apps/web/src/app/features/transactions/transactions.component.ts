@@ -26,6 +26,8 @@ import {
 import {
   CategoryItem,
   mapTransactionItemToCashTransaction,
+  BusinessProfile,
+  BusinessAccessRole,
 } from '../../core/models/cashflow-api.models';
 import { CashflowApiService } from '../../core/services/cashflow-api.service';
 import { BusinessContextService } from '../../core/services/business-context.service';
@@ -48,6 +50,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   private subs = new Subscription();
 
   user: User | null = null;
+  currentBusiness: BusinessProfile | null = null;
+
+  get canAddTransactions(): boolean {
+    if (this.noBusinessAccess || !this.currentBusiness || !this.currentBusiness.accessRole) return false;
+    return this.currentBusiness.accessRole === 'owner' || this.currentBusiness.accessRole === 'admin' || this.currentBusiness.accessRole === 'editor';
+  }
   transactions: CashTransaction[] = [];
   remoteCategories: CategoryItem[] = [];
   cashInCategories = [...CASH_IN_CATEGORIES];
@@ -69,6 +77,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   importErrorMessage = '';
   showSessionRecoveryActions = false;
   sessionRecoveryInProgress = false;
+  showMobileFilters = false;
   importIssueRows: Array<{
     kind: 'error' | 'skipped';
     rowNumber: number;
@@ -161,6 +170,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   totalItems = 0;
   remoteSummary = { totalIn: 0, totalOut: 0, net: 0 };
   private activeBusinessId: string | null = null;
+  private loadSub?: Subscription;
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly agGridStyleUrls = ['assets/ag-grid/ag-grid.css', 'assets/ag-grid/ag-theme-quartz.css'];
   private gridApi: GridApi | null = null;
@@ -485,6 +495,20 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     return this.selectedIds.size;
   }
 
+  get mobileAppliedFilterCount(): number {
+    let count = 0;
+
+    if (this.filterType !== 'all') count += 1;
+    if (this.categoryFilter) count += 1;
+    if (this.partyFilter) count += 1;
+    if (this.memberFilter) count += 1;
+    if (this.paymentModeFilter) count += 1;
+    if (this.durationFilter !== 'all' || this.fromDate || this.toDate) count += 1;
+    if (this.sortBy !== 'occurredAt' || this.sortOrder !== 'desc') count += 1;
+
+    return count;
+  }
+
   get hasImportIssues(): boolean {
     return this.importIssueRows.length > 0;
   }
@@ -794,8 +818,9 @@ export class TransactionsComponent implements OnInit, OnDestroy {
         if (this.activeBusinessId === nextBusinessId) {
           return;
         }
-
         this.activeBusinessId = nextBusinessId;
+        this.currentBusiness = business as BusinessProfile | null;
+        this.prepareForBusinessChange();
         if (this.user && this.isOnline) {
           this.load();
         }
@@ -824,6 +849,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.loadSub?.unsubscribe();
     this.subs.unsubscribe();
     this.syncEditModalState(false);
     if (this.searchDebounceTimer) {
@@ -842,7 +868,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   toggleForm(): void {
     if (this.noBusinessAccess) {
-      this.showToast('Create a shop or accept an invite before adding transactions.', 'error');
+      this.showToast('Create a book or accept an invite before adding transactions.', 'error');
       return;
     }
 
@@ -855,7 +881,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   openAddModal(): void {
     if (this.noBusinessAccess) {
-      this.showToast('Create a shop or accept an invite before adding transactions.', 'error');
+      this.showToast('Create a book or accept an invite before adding transactions.', 'error');
       return;
     }
     this.showForm = true;
@@ -870,6 +896,19 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   closeAddModal(): void {
     this.showForm = false;
     this.resetEntryForm();
+  }
+
+  toggleMobileFilters(): void {
+    this.showMobileFilters = !this.showMobileFilters;
+  }
+
+  closeMobileFilters(): void {
+    this.showMobileFilters = false;
+  }
+
+  resetMobileFilters(): void {
+    this.resetFilters();
+    this.showMobileFilters = false;
   }
 
   setFilter(f: 'all' | 'cash-in' | 'cash-out'): void {
@@ -1049,6 +1088,10 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   get selectedSortOption(): string {
     return `${this.sortBy}:${this.sortOrder}`;
+  }
+
+  getTransactionBalance(index: number): number {
+    return this.runningBalances[index] ?? 0;
   }
 
   resetFilters(): void {
@@ -1447,6 +1490,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   }
 
   private load(): void {
+    this.loadSub?.unsubscribe();
     this.showSessionRecoveryActions = false;
     if (this.user && this.isOnline) {
       this.dataMode = 'cloud';
@@ -1461,53 +1505,51 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   private loadRemote(): void {
     this.loading = true;
     const name = this.user!.email ? `${this.user!.email.split('@')[0]}'s Business` : 'My Business';
-    this.subs.add(
-      this.businessContext
-        .ensureBusinessReady(name)
-        .pipe(
-          switchMap((business) =>
-            business
-              ? forkJoin({
-                  business: of(business),
-                  categories: this.cashflowApiService.getCategories().pipe(catchError(() => of([]))),
-                  transactions: this.cashflowApiService
-                    .listTransactions(this.buildTransactionQuery())
-                    .pipe(catchError(() => of({ items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
-                  settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
-                })
-              : of({ business: null, categories: [], transactions: { items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, settings: null })
-          )
+    this.loadSub = this.businessContext
+      .ensureBusinessReady(name)
+      .pipe(
+        switchMap((business) =>
+          business
+            ? forkJoin({
+                business: of(business),
+                categories: this.cashflowApiService.getCategories().pipe(catchError(() => of([]))),
+                transactions: this.cashflowApiService
+                  .listTransactions(this.buildTransactionQuery())
+                  .pipe(catchError(() => of({ items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
+              })
+            : of({ business: null, categories: [], transactions: { items: [], page: 1, limit: this.pageSize, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, settings: null })
         )
-        .subscribe({
-          next: ({ business, categories, transactions, settings }) => {
-            this.showSessionRecoveryActions = false;
-            this.noBusinessAccess = !business;
-            this.remoteCategories = categories;
+      )
+      .subscribe({
+        next: ({ business, categories, transactions, settings }) => {
+          this.showSessionRecoveryActions = false;
+          this.noBusinessAccess = !business;
+          this.remoteCategories = categories;
 
-            // Sync form category to first valid remote category
-            const currentType = this.form.controls.type.value;
-            const validCats = categories.filter((c) => c.type === currentType).map((c) => c.name);
-            if (validCats.length && !validCats.includes(this.form.controls.category.value)) {
-              this.form.controls.category.setValue(validCats[0]);
-            }
+          const currentType = this.form.controls.type.value;
+          const validCats = categories.filter((c) => c.type === currentType).map((c) => c.name);
+          if (validCats.length && !validCats.includes(this.form.controls.category.value)) {
+            this.form.controls.category.setValue(validCats[0]);
+          }
 
-            this.transactions = transactions.items.map(mapTransactionItemToCashTransaction);
-            this.currentPage = transactions.page;
-            if (!this.pageSizeOptions.includes(this.pageSize)) {
-              this.pageSize = transactions.limit;
-            }
-            this.pageJumpInput = String(this.currentPage);
-            this.totalItems = transactions.total;
-            this.remoteSummary = transactions.summary;
-            this.currencyCode = settings?.currency || 'INR';
-            this.loading = false;
-          },
-          error: () => {
-            this.dataMode = 'local';
-            this.loadLocal();
-          },
-        })
-    );
+          this.transactions = transactions.items.map(mapTransactionItemToCashTransaction);
+          this.currentPage = transactions.page;
+          if (!this.pageSizeOptions.includes(this.pageSize)) {
+            this.pageSize = transactions.limit;
+          }
+          this.pageJumpInput = String(this.currentPage);
+          this.totalItems = transactions.total;
+          this.remoteSummary = transactions.summary;
+          this.currencyCode = settings?.currency || 'INR';
+          this.loading = false;
+          this.businessContext.completeBusinessSwitch();
+        },
+        error: () => {
+          this.dataMode = 'local';
+          this.loadLocal();
+        },
+      });
   }
 
   continueSession(): void {
@@ -1570,18 +1612,35 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   private loadLocal(): void {
     this.noBusinessAccess = false;
-    this.subs.add(
-      this.cashflowService.transactions$.subscribe((txns) => {
-        this.transactions = [...txns].sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        this.totalItems = this.filteredTransactions.length;
-        if (this.currentPage > this.totalPages) {
-          this.currentPage = this.totalPages;
-        }
-        this.loading = false;
-      })
-    );
+    this.loadSub = this.cashflowService.transactions$.subscribe((txns) => {
+      this.transactions = [...txns].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      this.totalItems = this.filteredTransactions.length;
+      if (this.currentPage > this.totalPages) {
+        this.currentPage = this.totalPages;
+      }
+      this.loading = false;
+      this.businessContext.completeBusinessSwitch();
+    });
+  }
+
+  private prepareForBusinessChange(): void {
+    this.loadSub?.unsubscribe();
+    this.loading = true;
+    this.noBusinessAccess = false;
+    this.showMobileFilters = false;
+    this.transactions = [];
+    this.remoteCategories = [];
+    this.remoteSummary = { totalIn: 0, totalOut: 0, net: 0 };
+    this.totalItems = 0;
+    this.currentPage = 1;
+    this.pageJumpInput = '1';
+    this.selectedIds.clear();
+    this.showBulkDeleteConfirm = false;
+    this.bulkDeleteInProgress = false;
+    this.closeEdit();
+    this.closeAddModal();
   }
 
   private buildTransactionQuery(): Record<string, string | number | undefined> {

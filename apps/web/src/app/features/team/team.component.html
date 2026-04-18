@@ -11,35 +11,38 @@
         <circle cx="9" cy="7" r="4"/>
         <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
-      <p>No shop selected. <a routerLink="/shop">Create or select a shop</a> first.</p>
+      <p>No book selected. <a routerLink="/books">Create or select a book</a> first.</p>
     </section>
   } @else {
     <!-- Invite Form -->
-    <section class="card">
-      <h2 class="section-title">Invite a Member</h2>
-      <p class="section-desc">Send an invite link by email. The recipient must accept before they appear here.</p>
-      <form [formGroup]="memberForm" (ngSubmit)="sendInvite()" class="invite-form">
-        <div class="invite-fields">
-          <label class="grow">
-            <span>Email address</span>
-            <input formControlName="email" type="email" placeholder="colleague@example.com" />
-            @if (memberForm.controls.email.touched && memberForm.controls.email.invalid) {
-              <span class="err">Enter a valid email address.</span>
-            }
-          </label>
-          <label>
-            <span>Role</span>
-            <select formControlName="role">
-              <option value="employee">Employee</option>
-              <option value="manager">Manager</option>
-            </select>
-          </label>
-        </div>
-        <button class="btn-primary" type="submit" [disabled]="sendingInvite">
-          {{ sendingInvite ? 'Sending…' : 'Send Invite' }}
-        </button>
-      </form>
-    </section>
+    @if (isAdminOrOwner) {
+      <section class="card">
+        <h2 class="section-title">Invite a Member</h2>
+        <p class="section-desc">Send an invite link by email. The recipient must accept before they appear here.</p>
+        <form [formGroup]="memberForm" (ngSubmit)="sendInvite()" class="invite-form">
+          <div class="invite-fields">
+            <label class="grow">
+              <span>Email address</span>
+              <input formControlName="email" type="email" placeholder="colleague@example.com" />
+              @if (memberForm.controls.email.touched && memberForm.controls.email.invalid) {
+                <span class="err">Enter a valid email address.</span>
+              }
+            </label>
+            <label>
+              <span>Role</span>
+              <select formControlName="role">
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn-primary" type="submit" [disabled]="sendingInvite">
+            {{ sendingInvite ? 'Sending…' : 'Send Invite' }}
+          </button>
+        </form>
+      </section>
+    }
 
     <!-- Members List -->
     <section class="card">
@@ -76,8 +79,9 @@
                     [disabled]="updatingRoleIds.has(member.userId)"
                     (change)="changeRole(member, $any($event.target).value)"
                   >
-                    <option value="employee">Employee</option>
-                    <option value="manager">Manager</option>
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
                   </select>
                   @if (updatingRoleIds.has(member.userId)) {
                     <span class="updating-label">Updating…</span>
@@ -92,7 +96,7 @@
                     type="button"
                     [disabled]="removingMemberIds.has(member.userId)"
                     (click)="removeMember(member)"
-                    title="Remove from shop"
+                    title="Remove from book"
                   >
                     @if (removingMemberIds.has(member.userId)) {
                       Removing…

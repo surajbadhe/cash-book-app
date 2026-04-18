@@ -7,9 +7,24 @@
 }
 
 .period-tabs {
+
   display: flex;
   gap: 8px;
   margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+
+  /* Hide scrollbar for Webkit browsers */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  @media (max-width: 600px) {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
 
   .tab {
     padding: 8px 20px;

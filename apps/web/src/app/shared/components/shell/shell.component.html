@@ -11,11 +11,12 @@
       @if (businesses$ | async; as businesses) {
         @if (businesses.length > 0) {
           <div class="business-switcher">
-            <label for="desktopBusinessSwitcher">Shop</label>
+            <label for="desktopBusinessSwitcher">Book</label>
             <select
               id="desktopBusinessSwitcher"
-              [value]="(currentBusiness$ | async)?.id || ''"
-              (change)="switchBusiness($any($event.target).value)"
+              [ngModel]="selectedBusinessId"
+              (ngModelChange)="switchBusiness($event)"
+              [ngModelOptions]="{ standalone: true }"
             >
               @for (business of businesses; track business.id) {
                 <option [value]="business.id">{{ business.name }}</option>
@@ -27,13 +28,7 @@
     </div>
 
     <nav class="sidebar-nav">
-      <a routerLink="/dashboard" routerLinkActive="active" (click)="closeSidebar()" class="nav-item">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <span>Overview</span>
-      </a>
+      <!-- Overview/Dashboard nav removed -->
       <a routerLink="/transactions" routerLinkActive="active" (click)="closeSidebar()" class="nav-item">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
@@ -47,12 +42,12 @@
         <span>Reports</span>
       </a>
         <div class="nav-divider"></div>
-        <a routerLink="/shop" routerLinkActive="active" (click)="closeSidebar()" class="nav-item">
+        <a routerLink="/books" routerLinkActive="active" (click)="closeSidebar()" class="nav-item">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
             <polyline points="9 22 9 12 15 12 15 22"/>
           </svg>
-          <span>Shop</span>
+          <span>Books</span>
         </a>
         <a routerLink="/team" routerLinkActive="active" (click)="closeSidebar()" class="nav-item">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -106,6 +101,15 @@
     <div class="sidebar-overlay" (click)="closeSidebar()"></div>
   }
 
+  @if (switchingBusiness$ | async) {
+    <div class="business-loading-overlay" aria-live="polite" aria-busy="true">
+      <div class="business-loading-card">
+        <div class="business-loading-spinner"></div>
+        <p>Switching book...</p>
+      </div>
+    </div>
+  }
+
   <!-- Right side -->
   <div class="content-area">
     <!-- Mobile Top Header -->
@@ -125,8 +129,9 @@
         @if (businesses.length > 0) {
           <select
             class="mobile-business-switcher"
-            [value]="(currentBusiness$ | async)?.id || ''"
-            (change)="switchBusiness($any($event.target).value)"
+            [ngModel]="selectedBusinessId"
+            (ngModelChange)="switchBusiness($event)"
+            [ngModelOptions]="{ standalone: true }"
           >
             @for (business of businesses; track business.id) {
               <option [value]="business.id">{{ business.name }}</option>
@@ -165,13 +170,7 @@
 
     <!-- Mobile Bottom Nav -->
     <nav class="bottom-nav">
-      <a routerLink="/dashboard" routerLinkActive="active" class="bottom-nav-item">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <span>Home</span>
-      </a>
+      <!-- Overview/Dashboard bottom nav removed -->
       <a routerLink="/transactions" routerLinkActive="active" class="bottom-nav-item">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>

@@ -1,6 +1,5 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AcceptBusinessInviteDto } from './dto/accept-business-invite.dto';
@@ -14,7 +13,6 @@ import { BusinessService } from './business.service';
 
 @ApiTags('businesses')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('businesses')
 export class BusinessController {
   constructor(private readonly businessService: BusinessService) {}
@@ -31,7 +29,7 @@ export class BusinessController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List shops accessible to the current user' })
+  @ApiOperation({ summary: 'List books accessible to the current user' })
   async list(@CurrentUser('sub') userId: string) {
     const businesses = await this.businessService.listForUser(userId);
     return {
@@ -42,7 +40,7 @@ export class BusinessController {
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'Get currently selected shop for the current user' })
+  @ApiOperation({ summary: 'Get currently selected book for the current user' })
   async getMine(@CurrentUser('sub') userId: string, @Headers('x-business-id') businessId?: string) {
     const business = await this.businessService.resolveForUser(userId, businessId);
     return {
@@ -67,8 +65,22 @@ export class BusinessController {
     };
   }
 
+  @Delete(':businessId')
+  @ApiOperation({ summary: 'Delete business profile' })
+  async remove(
+    @CurrentUser('sub') userId: string,
+    @Param('businessId') businessId: string,
+  ) {
+    const result = await this.businessService.remove(userId, businessId);
+    return {
+      success: true,
+      message: 'Business deleted successfully',
+      data: result,
+    };
+  }
+
   @Get(':businessId/members')
-  @ApiOperation({ summary: 'List shop team members' })
+  @ApiOperation({ summary: 'List book team members' })
   async listMembers(@CurrentUser('sub') userId: string, @Param('businessId') businessId: string) {
     const members = await this.businessService.listMembers(userId, businessId);
     return {
@@ -79,7 +91,7 @@ export class BusinessController {
   }
 
   @Post(':businessId/members')
-  @ApiOperation({ summary: 'Add an employee to a shop' })
+  @ApiOperation({ summary: 'Add a member to a book' })
   async addMember(
     @CurrentUser('sub') userId: string,
     @Param('businessId') businessId: string,
@@ -88,13 +100,13 @@ export class BusinessController {
     const members = await this.businessService.addMember(userId, businessId, dto);
     return {
       success: true,
-      message: 'Employee added successfully',
+      message: 'Member added successfully',
       data: members,
     };
   }
 
   @Patch(':businessId/members/:memberUserId')
-  @ApiOperation({ summary: 'Update employee role for a shop' })
+  @ApiOperation({ summary: 'Update member role for a book' })
   async updateMember(
     @CurrentUser('sub') userId: string,
     @Param('businessId') businessId: string,
@@ -104,13 +116,13 @@ export class BusinessController {
     const member = await this.businessService.updateMember(userId, businessId, memberUserId, dto);
     return {
       success: true,
-      message: 'Employee role updated successfully',
+      message: 'Member role updated successfully',
       data: member,
     };
   }
 
   @Delete(':businessId/members/:memberUserId')
-  @ApiOperation({ summary: 'Remove an employee from a shop' })
+  @ApiOperation({ summary: 'Remove a member from a book' })
   async removeMember(
     @CurrentUser('sub') userId: string,
     @Param('businessId') businessId: string,
@@ -119,13 +131,13 @@ export class BusinessController {
     const result = await this.businessService.removeMember(userId, businessId, memberUserId);
     return {
       success: true,
-      message: 'Employee removed successfully',
+      message: 'Member removed successfully',
       data: result,
     };
   }
 
   @Post(':businessId/invites')
-  @ApiOperation({ summary: 'Send email invite to join a shop' })
+  @ApiOperation({ summary: 'Send email invite to join a book' })
   async inviteMember(
     @CurrentUser('sub') userId: string,
     @Param('businessId') businessId: string,

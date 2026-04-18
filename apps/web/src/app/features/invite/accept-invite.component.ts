@@ -14,7 +14,7 @@ import { ToastService } from '../../core/services/toast.service';
   template: `
     <div class="invite-page">
       <div class="invite-card">
-        <h1>Shop Invitation</h1>
+        <h1>Book Invitation</h1>
 
         @if (loading) {
           <p class="muted">Loading invitation…</p>
@@ -76,6 +76,7 @@ export class AcceptInviteComponent implements OnInit {
   switchingAccount = false;
   errorMessage = '';
   token = '';
+  shopId = '';
   invite: BusinessInvitePreview | null = null;
 
   get isAuthenticated(): boolean {
@@ -89,6 +90,10 @@ export class AcceptInviteComponent implements OnInit {
 
   ngOnInit(): void {
     this.token = this.route.snapshot.queryParamMap.get('token') || this.authService.getPendingInviteToken();
+    this.shopId = this.route.snapshot.queryParamMap.get('book') || this.route.snapshot.queryParamMap.get('shop') || this.authService.getPendingShopId();
+    if (this.shopId) {
+      this.authService.setPendingShopId(this.shopId);
+    }
     if (!this.token) {
       this.errorMessage = 'Invite token is missing.';
       this.loading = false;
@@ -116,20 +121,43 @@ export class AcceptInviteComponent implements OnInit {
 
   goToLogin(): void {
     this.authService.setPendingInviteToken(this.token);
-    this.router.navigate(['/login'], { queryParams: { inviteToken: this.token } });
+    this.router.navigate(['/login'], {
+      queryParams: {
+        inviteToken: this.token,
+        ...(this.shopId ? { book: this.shopId } : {}),
+      },
+    });
   }
 
   goToRegister(): void {
     this.authService.setPendingInviteToken(this.token);
-    this.router.navigate(['/register'], { queryParams: { inviteToken: this.token } });
+    this.router.navigate(['/register'], {
+      queryParams: {
+        inviteToken: this.token,
+        ...(this.shopId ? { book: this.shopId } : {}),
+      },
+    });
   }
 
   switchAccount(): void {
     this.switchingAccount = true;
     this.authService.setPendingInviteToken(this.token);
+    if (this.shopId) {
+      this.authService.setPendingShopId(this.shopId);
+    }
     this.authService.logout().subscribe({
-      next: () => this.router.navigate(['/login'], { queryParams: { inviteToken: this.token } }),
-      error: () => this.router.navigate(['/login'], { queryParams: { inviteToken: this.token } }),
+      next: () => this.router.navigate(['/login'], {
+        queryParams: {
+          inviteToken: this.token,
+          ...(this.shopId ? { book: this.shopId } : {}),
+        },
+      }),
+      error: () => this.router.navigate(['/login'], {
+        queryParams: {
+          inviteToken: this.token,
+          ...(this.shopId ? { book: this.shopId } : {}),
+        },
+      }),
     });
   }
 
@@ -151,11 +179,11 @@ export class AcceptInviteComponent implements OnInit {
               this.businessContext.setCurrentBusiness(selected);
             }
             this.toastService.success(`You joined ${result.businessName} as ${result.role}.`);
-            this.router.navigate(['/dashboard']);
+            this.router.navigate(['/transactions'], { queryParams: { book: result.businessId } });
           },
           error: () => {
             this.toastService.success(`You joined ${result.businessName} as ${result.role}.`);
-            this.router.navigate(['/dashboard']);
+            this.router.navigate(['/transactions'], { queryParams: { book: result.businessId } });
           },
         });
       },

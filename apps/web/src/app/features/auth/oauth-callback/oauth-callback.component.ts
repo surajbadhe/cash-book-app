@@ -100,6 +100,11 @@ export class OAuthCallbackComponent implements OnInit {
     this.route.queryParams.subscribe((params) => {
       const token = params['token'];
       const error = params['error'];
+      const shop = params['book'] || params['shop'] || this.authService.getPendingShopId();
+
+      if (shop) {
+        this.authService.setPendingShopId(shop);
+      }
 
       if (error) {
         this.error.set(decodeURIComponent(error));
@@ -107,14 +112,19 @@ export class OAuthCallbackComponent implements OnInit {
       }
 
       if (token) {
-        this.authService.handleOAuthCallback(token);
+        this.authService.handleOAuthCallback(token, shop);
       } else {
-        this.router.navigate(['/login']);
+        this.router.navigate(['/login'], {
+          queryParams: shop ? { book: shop } : undefined,
+        });
       }
     });
   }
 
   goToLogin(): void {
-    this.router.navigate(['/login']);
+    const shop = this.authService.getPendingShopId();
+    this.router.navigate(['/login'], {
+      queryParams: shop ? { book: shop } : undefined,
+    });
   }
 }

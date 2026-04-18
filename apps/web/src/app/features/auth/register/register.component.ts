@@ -21,6 +21,7 @@ export class RegisterComponent {
   loading = false;
   errorMessage = '';
   inviteToken = '';
+  shopId = '';
 
   constructor() {
     this.registerForm = this.fb.group({
@@ -38,6 +39,11 @@ export class RegisterComponent {
     this.inviteToken = this.route.snapshot.queryParamMap.get('inviteToken') || this.authService.getPendingInviteToken();
     if (this.inviteToken) {
       this.authService.setPendingInviteToken(this.inviteToken);
+    }
+
+    this.shopId = this.route.snapshot.queryParamMap.get('book') || this.route.snapshot.queryParamMap.get('shop') || this.authService.getPendingShopId();
+    if (this.shopId) {
+      this.authService.setPendingShopId(this.shopId);
     }
   }
 
@@ -60,10 +66,18 @@ export class RegisterComponent {
     this.authService.register({ email, password }).subscribe({
       next: () => {
         const inviteToken = this.inviteToken || this.authService.getPendingInviteToken();
+        const shopId = this.shopId || this.authService.getPendingShopId();
         if (inviteToken) {
-          this.router.navigate(['/invite/accept'], { queryParams: { token: inviteToken } });
+          this.router.navigate(['/invite/accept'], {
+            queryParams: {
+              token: inviteToken,
+              ...(shopId ? { book: shopId } : {}),
+            },
+          });
         } else {
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/transactions'], {
+            queryParams: shopId ? { book: shopId } : undefined,
+          });
         }
       },
       error: (error) => {
@@ -79,6 +93,9 @@ export class RegisterComponent {
   loginWithGoogle(): void {
     if (this.inviteToken) {
       this.authService.setPendingInviteToken(this.inviteToken);
+    }
+    if (this.shopId) {
+      this.authService.setPendingShopId(this.shopId);
     }
     this.authService.loginWithOAuth('google');
   }

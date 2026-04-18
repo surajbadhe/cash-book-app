@@ -36,7 +36,7 @@ export class BusinessService {
       .findOne({ ownerId, isActive: true, name: normalizedName })
       .exec();
     if (existing) {
-      throw new ConflictException('A shop with this name already exists');
+      throw new ConflictException('A book with this name already exists');
     }
 
     const owner = await this.userService.findById(ownerId);
@@ -95,7 +95,7 @@ export class BusinessService {
         throw new NotFoundException('Business not found');
       }
       if (!this.hasAccess(business, userId)) {
-        throw new ForbiddenException('You do not have access to this shop');
+        throw new ForbiddenException('You do not have access to this book');
       }
 
       return business;
@@ -119,8 +119,8 @@ export class BusinessService {
 
   async update(ownerId: string, businessId: string, dto: UpdateBusinessDto): Promise<Business> {
     const business = await this.resolveForUser(ownerId, businessId);
-    if (!this.canManageShop(business, ownerId)) {
-      throw new ForbiddenException('You do not have permission to update this shop');
+    if (!this.isOwner(business, ownerId)) {
+      throw new ForbiddenException('You do not have permission to update this book');
     }
 
     Object.assign(business, {
@@ -128,6 +128,18 @@ export class BusinessService {
       name: dto.name?.trim() ?? business.name,
     });
     return business.save();
+  }
+
+  async remove(userId: string, businessId: string): Promise<{ deleted: true }> {
+    const business = await this.resolveForUser(userId, businessId);
+    if (!this.isOwner(business, userId)) {
+      throw new ForbiddenException('You do not have permission to delete this book');
+    }
+
+    business.isActive = false;
+    await business.save();
+
+    return { deleted: true };
   }
 
   async listMembers(userId: string, businessId: string) {
@@ -150,27 +162,27 @@ export class BusinessService {
     const memberEmail = dto.email.trim().toLowerCase();
     const memberUser = await this.userService.findByEmail(memberEmail);
     if (!memberUser) {
-      throw new NotFoundException('Employee account not found. Ask them to register first.');
+      throw new NotFoundException('User account not found. Ask them to register first.');
     }
     if (memberUser.id === business.ownerId) {
-      throw new ConflictException('Owner is already part of this shop');
+      throw new ConflictException('Owner is already part of this book');
     }
 
     const existing = business.members.find((member) => member.userId === memberUser.id);
     if (existing?.isActive) {
-      throw new ConflictException('Employee already has access to this shop');
+      throw new ConflictException('Member already has access to this book');
     }
 
     if (existing) {
       existing.email = memberUser.email;
-      existing.role = dto.role ?? BusinessMemberRole.EMPLOYEE;
+      existing.role = dto.role ?? BusinessMemberRole.EDITOR;
       existing.isActive = true;
       existing.joinedAt = new Date();
     } else {
       business.members.push({
         userId: memberUser.id,
         email: memberUser.email,
-        role: dto.role ?? BusinessMemberRole.EMPLOYEE,
+        role: dto.role ?? BusinessMemberRole.EDITOR,
         isActive: true,
         joinedAt: new Date(),
       } as any);
@@ -207,7 +219,7 @@ export class BusinessService {
     }
 
     if (memberUserId === business.ownerId) {
-      throw new BadRequestException('Owner cannot be removed from the shop');
+      throw new BadRequestException('Owner cannot be removed from the book');
     }
 
     const member = business.members.find((item) => item.userId === memberUserId && item.isActive);
@@ -232,11 +244,11 @@ export class BusinessService {
       throw new NotFoundException('Inviter account not found');
     }
 
-    const role = dto.role && dto.role !== BusinessMemberRole.OWNER ? dto.role : BusinessMemberRole.EMPLOYEE;
+    const role = dto.role && dto.role !== BusinessMemberRole.OWNER ? dto.role : BusinessMemberRole.VIEWER;
     const email = dto.email.trim().toLowerCase();
 
     if (business.members.some((member) => member.email === email && member.isActive)) {
-      throw new ConflictException('User already has access to this shop');
+      throw new ConflictException('User already has access to this book');
     }
 
     await this.businessInviteModel.updateMany(
@@ -275,7 +287,7 @@ export class BusinessService {
       business.name,
       inviter.email,
       acceptUrl,
-      role === BusinessMemberRole.MANAGER ? 'Manager' : 'Employee',
+      role.charAt(0).toUpperCase() + role.slice(1),
     );
 
     return {
@@ -291,7 +303,7 @@ export class BusinessService {
     const invite = await this.findActiveInvite(rawToken);
     const business = await this.businessModel.findById(invite.businessId).exec();
     if (!business || !business.isActive) {
-      throw new NotFoundException('Shop not found');
+      throw new NotFoundException('Book not found');
     }
 
     return {
@@ -316,7 +328,7 @@ export class BusinessService {
 
     const business = await this.businessModel.findById(invite.businessId).exec();
     if (!business || !business.isActive) {
-      throw new NotFoundException('Shop not found');
+      throw new NotFoundException('Book not found');
     }
 
     const existingMember = business.members.find((member) => member.userId === user.id);
@@ -374,16 +386,19 @@ export class BusinessService {
     return business.ownerId === userId || business.members.some((member) => member.userId === userId && member.isActive);
   }
 
-  private getAccessRole(business: Business, userId: string): BusinessMemberRole {
+  public getAccessRole(business: Business, userId: string): BusinessMemberRole {
     if (business.ownerId === userId) {
       return BusinessMemberRole.OWNER;
     }
-
-    return business.members.find((member) => member.userId === userId && member.isActive)?.role ?? BusinessMemberRole.EMPLOYEE;
+    return business.members.find((member) => member.userId === userId && member.isActive)?.role ?? BusinessMemberRole.VIEWER;
   }
 
   private canManageShop(business: Business, userId: string): boolean {
     const role = this.getAccessRole(business, userId);
-    return role === BusinessMemberRole.OWNER || role === BusinessMemberRole.MANAGER;
+    return role === BusinessMemberRole.OWNER || role === BusinessMemberRole.ADMIN;
+  }
+
+  private isOwner(business: Business, userId: string): boolean {
+    return business.ownerId === userId;
   }
 }

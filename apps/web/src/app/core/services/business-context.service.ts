@@ -17,12 +17,15 @@ export class BusinessContextService {
   private readonly currentBusinessSubject = new BehaviorSubject<BusinessProfile | null>(null);
   readonly currentBusiness$ = this.currentBusinessSubject.asObservable();
 
+  private readonly switchingBusinessSubject = new BehaviorSubject<boolean>(false);
+  readonly switchingBusiness$ = this.switchingBusinessSubject.asObservable();
+
   get currentBusiness(): BusinessProfile | null {
     return this.currentBusinessSubject.value;
   }
 
   get currentBusinessId(): string | null {
-    return this.currentBusiness?.id || localStorage.getItem(this.storageKey());
+    return this.currentBusiness?.id || this.getPreferredBusinessId();
   }
 
   refreshBusinesses(): Observable<BusinessProfile[]> {
@@ -62,10 +65,32 @@ export class BusinessContextService {
     this.setCurrentBusiness(selected);
   }
 
+  beginBusinessSwitch(): void {
+    this.switchingBusinessSubject.next(true);
+  }
+
+  completeBusinessSwitch(): void {
+    this.switchingBusinessSubject.next(false);
+  }
+
   private syncCurrentBusiness(businesses: BusinessProfile[]): void {
-    const storedId = localStorage.getItem(this.storageKey());
-    const selected = businesses.find((item) => item.id === storedId) || businesses[0] || null;
+    const preferredId = this.getPreferredBusinessId();
+    const selected = businesses.find((item) => item.id === preferredId) || businesses[0] || null;
     this.setCurrentBusiness(selected);
+  }
+
+  private getPreferredBusinessId(): string | null {
+    return this.getBusinessIdFromUrl() || localStorage.getItem(this.storageKey());
+  }
+
+  private getBusinessIdFromUrl(): string | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const bookId = params.get('book') || params.get('shop');
+    return bookId?.trim() || null;
   }
 
   private storageKey(): string {

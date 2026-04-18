@@ -1,7 +1,7 @@
 import { ApiResponse } from './auth.models';
 import { CashTransaction, TransactionType } from './cashflow.models';
 
-export type BusinessAccessRole = 'owner' | 'manager' | 'employee';
+export type BusinessAccessRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 export interface BusinessMember {
   userId: string;

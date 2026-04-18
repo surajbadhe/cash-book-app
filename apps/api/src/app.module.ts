@@ -12,6 +12,8 @@ import { SettingsModule } from './settings/settings.module';
 import { UserModule } from './user/user.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { APP_GUARD, Reflector } from '@nestjs/core';
+import { PublicJwtAuthGuard } from './auth/guards/public-jwt-auth.guard';
 import configuration from './config/configuration';
 import {
   ErrorLog,
@@ -80,6 +82,14 @@ import { LogsController } from './common/controllers/logs.controller';
     UserModule,
   ],
   controllers: [AppController, LogsController],
-  providers: [AppService, HttpExceptionFilter],
+  providers: [
+    AppService,
+    HttpExceptionFilter,
+    Reflector,
+    {
+      provide: APP_GUARD,
+      useClass: PublicJwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

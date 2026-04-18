@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
         <h1>403</h1>
         <h2>Access Denied</h2>
         <p>You don't have permission to access this resource.</p>
-        <a routerLink="/dashboard" class="btn">Go to Dashboard</a>
+        <a routerLink="/transactions" class="btn">Go to Transactions</a>
       </div>
     </div>
   `,

@@ -15,10 +15,10 @@
       >
         {{ importing ? 'Importing…' : 'Import CSV' }}
       </button>
-      <button class="btn-action in" type="button" (click)="openAddModalWithType('cash-in')" [disabled]="noBusinessAccess">
+      <button class="btn-action in" type="button" (click)="openAddModalWithType('cash-in')" [disabled]="!canAddTransactions">
         + Cash In
       </button>
-      <button class="btn-action out" type="button" (click)="openAddModalWithType('cash-out')" [disabled]="noBusinessAccess">
+      <button class="btn-action out" type="button" (click)="openAddModalWithType('cash-out')" [disabled]="!canAddTransactions">
         − Cash Out
       </button>
       <input
@@ -31,51 +31,58 @@
     </div>
   </div>
 
-  <div class="top-filters">
-    <select [value]="durationFilter" (change)="onDurationFilterChange(($any($event.target).value))">
-      @for (option of durationOptions; track option.value) {
-        <option [value]="option.value">Duration: {{ option.label }}</option>
-      }
-    </select>
+  <div class="top-filters desktop-only">
+    <div class="desktop-filter-row">
+      <select class="filter-select" [value]="durationFilter" (change)="onDurationFilterChange(($any($event.target).value))">
+        @for (option of durationOptions; track option.value) {
+          <option [value]="option.value">Duration: {{ option.label }}</option>
+        }
+      </select>
 
-    <select [value]="filterType" (change)="setFilter($any($event.target).value)">
-      <option value="all">Types: All</option>
-      <option value="cash-in">Types: Cash In</option>
-      <option value="cash-out">Types: Cash Out</option>
-    </select>
+      <select class="filter-select" [value]="filterType" (change)="setFilter($any($event.target).value)">
+        <option value="all">Types: All</option>
+        <option value="cash-in">Types: Cash In</option>
+        <option value="cash-out">Types: Cash Out</option>
+      </select>
 
-    <select [value]="partyFilter" (change)="onPartyFilterChange(($any($event.target).value))">
-      <option value="">Parties: All</option>
-      @for (party of filterPartyOptions; track party) {
-        <option [value]="party">Parties: {{ party }}</option>
-      }
-    </select>
+      <select class="filter-select" [value]="partyFilter" (change)="onPartyFilterChange(($any($event.target).value))">
+        <option value="">Parties: All</option>
+        @for (party of filterPartyOptions; track party) {
+          <option [value]="party">Parties: {{ party }}</option>
+        }
+      </select>
 
-    <select [value]="memberFilter" (change)="onMemberFilterChange(($any($event.target).value))">
-      <option value="">Members: All</option>
-      @for (member of filterMemberOptions; track member) {
-        <option [value]="member">Members: {{ member }}</option>
-      }
-    </select>
+      <select class="filter-select" [value]="memberFilter" (change)="onMemberFilterChange(($any($event.target).value))">
+        <option value="">Members: All</option>
+        @for (member of filterMemberOptions; track member) {
+          <option [value]="member">Members: {{ member }}</option>
+        }
+      </select>
 
-    <select [value]="paymentModeFilter" (change)="onPaymentModeFilterChange(($any($event.target).value))">
-      <option value="">Payment Modes: All</option>
-      @for (mode of filterPaymentModeOptions; track mode) {
-        <option [value]="mode">Payment Modes: {{ mode }}</option>
-      }
-    </select>
+      <select class="filter-select" [value]="paymentModeFilter" (change)="onPaymentModeFilterChange(($any($event.target).value))">
+        <option value="">Payment Modes: All</option>
+        @for (mode of filterPaymentModeOptions; track mode) {
+          <option [value]="mode">Payment Modes: {{ mode }}</option>
+        }
+      </select>
 
-    <select [value]="categoryFilter" (change)="onCategoryFilterChange(($any($event.target).value))">
-      <option value="">Categories: All</option>
-      @for (category of filterCategoryOptions; track category) {
-        <option [value]="category">Categories: {{ category }}</option>
-      }
-    </select>
+      <select class="filter-select" [value]="categoryFilter" (change)="onCategoryFilterChange(($any($event.target).value))">
+        <option value="">Categories: All</option>
+        @for (category of filterCategoryOptions; track category) {
+          <option [value]="category">Categories: {{ category }}</option>
+        }
+      </select>
 
-    <button type="button" class="btn-reset-filters" (click)="resetFilters()">Reset Filters</button>
+      <ng-container *ngIf="durationFilter !== 'all' || filterType !== 'all' || partyFilter || memberFilter || paymentModeFilter || categoryFilter">
+        <button type="button" class="btn-reset-filters icon-btn desktop-reset" (click)="resetFilters()" title="Reset filters">
+          <span class="material-symbols-outlined">filter_alt_off</span>
+        </button>
+      </ng-container>
+    </div>
   </div>
 
-  <div class="search-row">
+  <div class="search-row desktop-only">
+    <span class="search-icon material-symbols-outlined">search</span>
     <input
       type="text"
       [value]="searchTerm"
@@ -83,9 +90,145 @@
       placeholder="Search by remark or amount..."
     />
     @if (searchTerm.trim()) {
-      <button type="button" class="btn-clear-search" (click)="clearSearch()" aria-label="Clear search">Clear</button>
+      <button type="button" class="btn-clear-search icon-btn" (click)="clearSearch()" aria-label="Clear search" title="Clear search">
+        <span class="material-symbols-outlined">close</span>
+      </button>
     }
   </div>
+
+  <div class="mobile-toolbar mobile-only">
+    <div class="mobile-search-row">
+      <span class="search-icon material-symbols-outlined">search</span>
+      <input
+        type="text"
+        [value]="searchTerm"
+        (input)="onSearchInput(($any($event.target).value))"
+        placeholder="Search transactions"
+      />
+      @if (searchTerm.trim()) {
+        <button type="button" class="btn-clear-search mobile-clear" (click)="clearSearch()" aria-label="Clear search">Clear</button>
+      }
+    </div>
+
+    <button type="button" class="mobile-filter-btn icon-btn" (click)="toggleMobileFilters()" title="Show filters">
+      <span class="material-symbols-outlined">filter_alt</span>
+      <span>Filters</span>
+      @if (mobileAppliedFilterCount > 0) {
+        <span class="mobile-filter-badge">{{ mobileAppliedFilterCount }}</span>
+      }
+    </button>
+  </div>
+
+  @if (showMobileFilters) {
+    <div class="mobile-filter-overlay mobile-only side-panel-overlay" (click)="closeMobileFilters()">
+      <div class="mobile-filter-sheet side-panel" (click)="$event.stopPropagation()">
+        <div class="filter-panel">
+          <div class="mobile-filter-head">
+            <div>
+              <h3>Filters</h3>
+              <p>Refine the current book&apos;s transactions.</p>
+            </div>
+            <button type="button" class="mobile-filter-close icon-btn" (click)="closeMobileFilters()" aria-label="Close filters" title="Close filters">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="mobile-filter-grid">
+            <label class="filter-label">
+              <span>Duration</span>
+              <select class="filter-select" [value]="durationFilter" (change)="onDurationFilterChange(($any($event.target).value))">
+                <option value="all">All time</option>
+                @for (option of durationOptions; track option.value) {
+                  <option [value]="option.value">{{ option.label }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="filter-label">
+              <span>Type</span>
+              <select class="filter-select" [value]="filterType" (change)="setFilter($any($event.target).value)">
+                <option value="all">All</option>
+                <option value="cash-in">Cash In</option>
+                <option value="cash-out">Cash Out</option>
+              </select>
+            </label>
+
+            <label class="filter-label">
+              <span>Category</span>
+              <select class="filter-select" [value]="categoryFilter" (change)="onCategoryFilterChange(($any($event.target).value))">
+                <option value="">All categories</option>
+                @for (category of filterCategoryOptions; track category) {
+                  <option [value]="category">{{ category }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="filter-label">
+              <span>Party</span>
+              <select class="filter-select" [value]="partyFilter" (change)="onPartyFilterChange(($any($event.target).value))">
+                <option value="">All parties</option>
+                @for (party of filterPartyOptions; track party) {
+                  <option [value]="party">{{ party }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="filter-label">
+              <span>Member</span>
+              <select class="filter-select" [value]="memberFilter" (change)="onMemberFilterChange(($any($event.target).value))">
+                <option value="">All members</option>
+                @for (member of filterMemberOptions; track member) {
+                  <option [value]="member">Members: {{ member }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="filter-label">
+              <span>Payment mode</span>
+              <select class="filter-select" [value]="paymentModeFilter" (change)="onPaymentModeFilterChange(($any($event.target).value))">
+                <option value="">All modes</option>
+                @for (mode of filterPaymentModeOptions; track mode) {
+                  <option [value]="mode">{{ mode }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="filter-label">
+              <span>Sort</span>
+              <select class="filter-select" [value]="selectedSortOption" (change)="onSortChange(($any($event.target).value))">
+                <option value="occurredAt:desc">Newest first</option>
+                <option value="occurredAt:asc">Oldest first</option>
+                <option value="amount:desc">Amount high to low</option>
+                <option value="amount:asc">Amount low to high</option>
+                <option value="categoryName:asc">Category A to Z</option>
+                <option value="categoryName:desc">Category Z to A</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="mobile-date-grid">
+            <label class="filter-label">
+              <span>From date</span>
+              <input class="filter-select" type="date" [value]="fromDate" (change)="onDateFilterChange('from', $any($event.target).value)" />
+            </label>
+            <label class="filter-label to-date">
+              <span>To date</span>
+              <input class="filter-select" type="date" [value]="toDate" (change)="onDateFilterChange('to', $any($event.target).value)" />
+            </label>
+          </div>
+
+          <div class="mobile-filter-actions side-panel-actions">
+            <button type="button" class="mobile-filter-reset icon-btn" (click)="resetMobileFilters()" title="Reset filters">
+              <span class="material-symbols-outlined">filter_alt_off</span>
+            </button>
+            <button type="button" class="mobile-filter-done icon-btn primary" (click)="closeMobileFilters()" title="Apply filters">
+              <span class="material-symbols-outlined">check_circle</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
 
   <div class="summary-strip">
     <div class="summary-item cash-in">
@@ -159,8 +302,8 @@
   @if (noBusinessAccess) {
     <div class="card" style="margin-bottom:16px;">
       <div class="empty-state">
-        <p>No shop available yet.</p>
-        <p style="margin-top:8px;color:#64748b;">Create a shop in Settings or accept an invite to start adding transactions.</p>
+        <p>No book available yet.</p>
+        <p style="margin-top:8px;color:#64748b;">Create a book in Books or accept an invite to start adding transactions.</p>
       </div>
     </div>
   }
@@ -497,8 +640,9 @@
         </div>
       }
 
+      <!-- Desktop Table -->
       <ag-grid-angular
-        class="transactions-grid ag-theme-quartz"
+        class="transactions-grid ag-theme-quartz desktop-only"
         style="width:100%;height:620px;"
         [modules]="agGridModules"
         [rowData]="gridRows"
@@ -515,6 +659,36 @@
         (selectionChanged)="onGridSelectionChanged($event)"
         (cellClicked)="onGridCellClicked($event)"
       ></ag-grid-angular>
+
+      <!-- Mobile Card List -->
+      <div class="transactions-mobile-list mobile-only">
+        <ng-container *ngIf="gridRows && gridRows.length; else noTransactionsMobile">
+          <div *ngFor="let txn of gridRows" class="txn-card">
+            <div class="txn-card-row txn-card-main">
+              <div class="txn-card-amount" [ngClass]="{'in': txn.raw.type === 'cash-in', 'out': txn.raw.type === 'cash-out'}">
+                {{ txn.raw.type === 'cash-in' ? '+' : '-' }}{{ txn.raw.amount | number:'1.2-2' }}
+              </div>
+              <div class="txn-card-category">{{ txn.raw.category }}</div>
+              <div class="txn-card-date">{{ txn.raw.timestamp | date:'shortDate' }}<span class="txn-card-time">{{ txn.raw.timestamp | date:'shortTime' }}</span></div>
+            </div>
+            <div class="txn-card-row txn-card-meta">
+              <div class="txn-card-party" *ngIf="txn.raw.party">{{ txn.raw.party }}</div>
+              <div class="txn-card-note" *ngIf="txn.raw.note">{{ txn.raw.note }}</div>
+            </div>
+            <div class="txn-card-row txn-card-actions">
+              <button type="button" class="txn-action-btn edit" (click)="openEdit(txn.raw)">
+                <span class="material-symbols-outlined">edit</span>
+              </button>
+              <button type="button" class="txn-action-btn delete" (click)="delete(txn.raw.id)">
+                <span class="material-symbols-outlined">delete</span>
+              </button>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #noTransactionsMobile>
+          <div class="txn-mobile-empty">No transactions found.</div>
+        </ng-template>
+      </div>
     }
   </div>
 

@@ -70,15 +70,17 @@ export class TransactionService implements OnModuleInit {
 
   async createForCurrentUser(userId: string, dto: CreateTransactionDto, businessId?: string): Promise<Transaction> {
     const business = await this.businessService.resolveForUser(userId, businessId);
+    // Only allow EDITOR, ADMIN, OWNER
+    const role = this.businessService.getAccessRole(business, userId);
+    if (role === 'viewer') {
+      throw new ForbiddenException('Viewers cannot add transactions');
+    }
     const category = await this.categoryService.findByIdForBusiness(business.id, dto.categoryId);
-
     if (category.type !== dto.type) {
       throw new BadRequestException('Transaction type must match category type');
     }
-
     const normalizedDeviceId = dto.deviceId?.trim();
     const normalizedLocalRef = dto.localRef?.trim();
-
     const transaction = new this.transactionModel({
       businessId: business.id,
       type: dto.type,
@@ -97,16 +99,20 @@ export class TransactionService implements OnModuleInit {
       updatedBy: userId,
       deletedAt: null,
     });
-
     return transaction.save();
   }
 
   async importForCurrentUser(userId: string, file: { buffer?: Buffer; originalname?: string } | undefined, businessId?: string) {
+    // Only allow EDITOR, ADMIN, OWNER
+    const business = await this.businessService.resolveForUser(userId, businessId);
+    const role = this.businessService.getAccessRole(business, userId);
+    if (role === 'viewer') {
+      throw new ForbiddenException('Viewers cannot import transactions');
+    }
     if (!file?.buffer?.length) {
       throw new BadRequestException('CSV file is required');
     }
 
-    const business = await this.businessService.resolveForUser(userId, businessId);
     const content = file.buffer.toString('utf8').replace(/^\uFEFF/, '').trim();
 
     if (!content) {
@@ -411,15 +417,18 @@ export class TransactionService implements OnModuleInit {
 
   async updateForCurrentUser(userId: string, id: string, dto: UpdateTransactionDto, businessId?: string): Promise<Transaction> {
     const business = await this.businessService.resolveForUser(userId, businessId);
+    // Only allow EDITOR, ADMIN, OWNER
+    const role = this.businessService.getAccessRole(business, userId);
+    if (role === 'viewer') {
+      throw new ForbiddenException('Viewers cannot edit transactions');
+    }
     const transaction = await this.transactionModel.findById(id).exec();
-
     if (!transaction || transaction.deletedAt) {
       throw new NotFoundException('Transaction not found');
     }
     if (transaction.businessId !== business.id) {
       throw new ForbiddenException('You do not have access to this transaction');
     }
-
     if (dto.categoryId) {
       const category = await this.categoryService.findByIdForBusiness(business.id, dto.categoryId);
       const type = dto.type ?? transaction.type;
@@ -429,7 +438,6 @@ export class TransactionService implements OnModuleInit {
       transaction.categoryId = category.id;
       transaction.categoryName = category.name;
     }
-
     if (dto.type) {
       transaction.type = dto.type;
     }
@@ -461,21 +469,23 @@ export class TransactionService implements OnModuleInit {
       transaction.localRef = dto.localRef;
     }
     transaction.updatedBy = userId;
-
     return transaction.save();
   }
 
   async deleteForCurrentUser(userId: string, id: string, businessId?: string): Promise<Transaction> {
     const business = await this.businessService.resolveForUser(userId, businessId);
+    // Only allow EDITOR, ADMIN, OWNER
+    const role = this.businessService.getAccessRole(business, userId);
+    if (role === 'viewer') {
+      throw new ForbiddenException('Viewers cannot delete transactions');
+    }
     const transaction = await this.transactionModel.findById(id).exec();
-
     if (!transaction || transaction.deletedAt) {
       throw new NotFoundException('Transaction not found');
     }
     if (transaction.businessId !== business.id) {
       throw new ForbiddenException('You do not have access to this transaction');
     }
-
     transaction.deletedAt = new Date();
     transaction.updatedBy = userId;
     return transaction.save();
@@ -485,26 +495,26 @@ export class TransactionService implements OnModuleInit {
     if (!ids || ids.length === 0) {
       throw new BadRequestException('No transaction IDs provided');
     }
-
     if (ids.length > 100) {
       throw new BadRequestException('Cannot delete more than 100 transactions at once');
     }
-
     const business = await this.businessService.resolveForUser(userId, businessId);
+    // Only allow EDITOR, ADMIN, OWNER
+    const role = this.businessService.getAccessRole(business, userId);
+    if (role === 'viewer') {
+      throw new ForbiddenException('Viewers cannot delete transactions');
+    }
     const transactions = await this.transactionModel
       .find({ _id: { $in: ids }, businessId: business.id, deletedAt: null })
       .exec();
-
     if (transactions.length === 0) {
       throw new NotFoundException('No accessible transactions found to delete');
     }
-
     const now = new Date();
     const updateResult = await this.transactionModel.updateMany(
       { _id: { $in: transactions.map((t) => t._id) } },
       { deletedAt: now, updatedBy: userId },
     );
-
     return {
       deletedCount: updateResult.modifiedCount || transactions.length,
     };

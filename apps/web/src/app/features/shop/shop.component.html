@@ -1,73 +1,106 @@
 <div class="page">
   <div class="page-header">
-    <h1 class="page-title">Shops</h1>
-    <p class="page-sub">Create and manage your shop profiles</p>
+    <h1 class="page-title">Books</h1>
+    <p class="page-sub">Create and manage your books</p>
   </div>
 
-  <!-- Shop Selector -->
   <section class="card">
     <div class="section-header-row">
       <div>
-        <h2 class="section-title">Your Shops</h2>
-        <p class="section-desc">Switch between shops or create a new one.</p>
+        <h2 class="section-title">Your Books</h2>
+        <p class="section-desc">Select a book and manage owner-level settings.</p>
       </div>
-      @if (!isCreating) {
-        <button class="btn-primary btn-small" type="button" (click)="startCreating()">+ New Shop</button>
-      }
+      <button class="btn-primary btn-small" type="button" (click)="openCreateModal()">+ New Book</button>
     </div>
 
-    @if (businesses.length > 0) {
-      <div class="shop-tabs">
-        @for (b of businesses; track b.id) {
-          <button
-            type="button"
-            class="shop-chip"
-            [class.active]="!isCreating && currentBusiness?.id === b.id"
-            (click)="switchShop(b.id || '')"
-          >
-            {{ b.name }}
-            <span class="role-badge">{{ b.accessRole || 'owner' }}</span>
-          </button>
-        }
+    @if (businesses.length === 0) {
+      <p class="section-desc empty-note">No books yet. Create your first book.</p>
+    } @else {
+      <div class="books-table-wrap">
+        <table class="books-table">
+          <thead>
+            <tr>
+              <th>Book</th>
+              <th>Owner</th>
+              <th>Your Role</th>
+              <th>Details</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (book of businesses; track book.id) {
+              <tr [class.current]="currentBusiness?.id === book.id">
+                <td>
+                  <button type="button" class="book-name" (click)="switchBook(book.id || '')">
+                    {{ book.name }}
+                  </button>
+                </td>
+                <td>{{ ownerLabel(book) }}</td>
+                <td><span class="role-badge">{{ roleLabel(bookRole(book)) }}</span></td>
+                <td>
+                  <div class="book-details">
+                    <span>{{ book.currency }} • {{ book.timezone }}</span>
+                    @if (book.phone) { <span>{{ book.phone }}</span> }
+                    @if (book.address) { <span>{{ book.address }}</span> }
+                  </div>
+                </td>
+                <td>
+                  <div class="row-actions">
+                    @if (canManageBook(book)) {
+                      <button type="button" class="btn-row" (click)="openRenameModal(book)">Rename</button>
+                      <button type="button" class="btn-row" (click)="openEditModal(book)">Edit</button>
+                      <button type="button" class="btn-row danger" [disabled]="isDeleting(book.id)" (click)="deleteBook(book)">
+                        {{ isDeleting(book.id) ? 'Deleting…' : 'Delete' }}
+                      </button>
+                      <button type="button" class="btn-row" (click)="inviteToBook(book)">Invite</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    } @else if (!isCreating) {
-      <p class="section-desc empty-note">No shops yet. Create your first shop below.</p>
     }
   </section>
 
-  <!-- Edit / Create Form -->
-  @if (isCreating || currentBusiness) {
-    <section class="card">
-      <h2 class="section-title">{{ isCreating ? 'New Shop' : 'Edit Shop' }}</h2>
-
-      <form [formGroup]="shopForm" (ngSubmit)="saveShop()" class="stack-form">
-        <label>
-          <span>Shop name <span class="required">*</span></span>
-          <input formControlName="name" placeholder="e.g. Main Branch" />
-        </label>
-        @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
-          <p class="err">Shop name must be at least 2 characters.</p>
-        }
-
-        <label>
-          <span>Phone</span>
-          <input formControlName="phone" placeholder="Optional" />
-        </label>
-
-        <label>
-          <span>Address</span>
-          <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
-        </label>
-
-        <div class="form-actions">
-          <button class="btn-primary" type="submit" [disabled]="saving">
-            {{ saving ? (isCreating ? 'Creating…' : 'Saving…') : (isCreating ? 'Create Shop' : 'Save Changes') }}
-          </button>
-          @if (isCreating) {
-            <button class="btn-secondary" type="button" (click)="cancelCreating()">Cancel</button>
-          }
+  @if (modalMode) {
+    <div class="modal-backdrop" (click)="closeModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-head">
+          <h3>{{ modalMode === 'create' ? 'New Book' : (modalMode === 'rename' ? 'Rename Book' : 'Edit Book') }}</h3>
+          <button type="button" class="btn-close" (click)="closeModal()">×</button>
         </div>
-      </form>
-    </section>
+
+        <form [formGroup]="shopForm" (ngSubmit)="saveBook()" class="stack-form">
+          <label>
+            <span>Book name <span class="required">*</span></span>
+            <input formControlName="name" placeholder="e.g. Personal Expenses" />
+          </label>
+          @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
+            <p class="err">Book name must be at least 2 characters.</p>
+          }
+
+          @if (modalMode !== 'rename') {
+            <label>
+              <span>Phone</span>
+              <input formControlName="phone" placeholder="Optional" />
+            </label>
+
+            <label>
+              <span>Address</span>
+              <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
+            </label>
+          }
+
+          <div class="form-actions">
+            <button class="btn-primary" type="submit" [disabled]="saving">
+              {{ saving ? 'Saving…' : (modalMode === 'create' ? 'Create Book' : (modalMode === 'rename' ? 'Rename Book' : 'Save Changes')) }}
+            </button>
+            <button class="btn-secondary" type="button" (click)="closeModal()" [disabled]="saving">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
   }
 </div>

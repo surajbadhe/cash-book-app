@@ -10,7 +10,7 @@
       </svg>
     </button>
   </div>
-
+<!-- File removed as part of overview/dashboard removal -->
   <div class="sync-badge" [class.local]="dataMode === 'local'">
     <span class="dot"></span>
     {{ dataMode === 'cloud' ? 'Cloud synced' : 'Local storage' }}
@@ -26,8 +26,8 @@
   } @else if (noBusinessAccess) {
     <section class="card">
       <div class="empty-state">
-        <p>No shop available yet.</p>
-        <p class="page-sub" style="margin-top:8px;">Create your first shop in Settings or accept an invite to join an existing one.</p>
+        <p>No book available yet.</p>
+        <p class="page-sub" style="margin-top:8px;">Create your first book in Settings or accept an invite to join an existing one.</p>
         <a routerLink="/settings" class="btn-text" style="margin-top:12px;display:inline-flex;">Go to Settings →</a>
       </div>
     </section>

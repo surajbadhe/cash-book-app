@@ -43,8 +43,9 @@ export class ReportsComponent implements OnInit, OnDestroy {
   loading = true;
   noBusinessAccess = false;
   private activeBusinessId: string | null = null;
+  private loadSub?: Subscription;
 
-  period: 'all' | 'daily' | 'weekly' | 'monthly' | 'custom' = 'monthly';
+  period: 'all' | 'daily' | 'weekly' | 'monthly' | 'custom' = 'all';
   fromDate = '';
   toDate = '';
 
@@ -69,6 +70,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
         }
 
         this.activeBusinessId = nextBusinessId;
+        this.prepareForBusinessChange();
         if (this.user && this.isOnline) {
           this.load();
         }
@@ -82,6 +84,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.loadSub?.unsubscribe();
     this.subs.unsubscribe();
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', this.onOnline);
@@ -114,6 +117,7 @@ export class ReportsComponent implements OnInit, OnDestroy {
   }
 
   private load(): void {
+    this.loadSub?.unsubscribe();
     this.loading = true;
     if (this.user && this.isOnline) {
       this.dataMode = 'cloud';
@@ -127,56 +131,65 @@ export class ReportsComponent implements OnInit, OnDestroy {
   private loadRemote(): void {
     const name = this.user!.email ? `${this.user!.email.split('@')[0]}'s Business` : 'My Business';
     const customRange = this.getNormalizedCustomRange();
-    this.subs.add(
-      this.businessContext
-        .ensureBusinessReady(name)
-        .pipe(
-          switchMap((business) =>
-            business
-              ? forkJoin({
-                  business: of(business),
-                  transactions: this.fetchAllReportTransactions(customRange).pipe(
-                    catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))
-                  ),
-                  dashboard:
-                    this.period === 'custom' || this.period === 'all'
-                      ? of(null)
-                      : this.cashflowApiService
-                          .getDashboardReport(new Date().toISOString().split('T')[0])
-                          .pipe(catchError(() => of(null))),
-                  settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
-                })
-              : of({ business: null, transactions: { items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, dashboard: null, settings: null })
-          )
+    this.loadSub = this.businessContext
+      .ensureBusinessReady(name)
+      .pipe(
+        switchMap((business) =>
+          business
+            ? forkJoin({
+                business: of(business),
+                transactions: this.fetchAllReportTransactions(customRange).pipe(
+                  catchError(() => of({ items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))
+                ),
+                dashboard:
+                  this.period === 'custom' || this.period === 'all'
+                    ? of(null)
+                    : this.cashflowApiService
+                        .getDashboardReport(new Date().toISOString().split('T')[0])
+                        .pipe(catchError(() => of(null))),
+                settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
+              })
+            : of({ business: null, transactions: { items: [], page: 1, limit: 500, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, dashboard: null, settings: null })
         )
-        .subscribe({
-          next: ({ business, transactions, dashboard, settings }) => {
-            this.noBusinessAccess = !business;
-            this.currencyCode = settings?.currency || 'INR';
-            const txns = transactions.items.map(mapTransactionItemToCashTransaction);
-            if (business && dashboard) {
-              this.applyRemote(dashboard, txns);
-            } else {
-              this.applyCloudTransactionSummary(txns, transactions.summary);
-            }
-            this.loading = false;
-          },
-          error: () => {
-            this.dataMode = 'local';
-            this.loadLocal();
-          },
-        })
-    );
+      )
+      .subscribe({
+        next: ({ business, transactions, dashboard, settings }) => {
+          this.noBusinessAccess = !business;
+          this.currencyCode = settings?.currency || 'INR';
+          const txns = transactions.items.map(mapTransactionItemToCashTransaction);
+          if (business && dashboard) {
+            this.applyRemote(dashboard, txns);
+          } else {
+            this.applyCloudTransactionSummary(txns, transactions.summary);
+          }
+          this.loading = false;
+          this.businessContext.completeBusinessSwitch();
+        },
+        error: () => {
+          this.dataMode = 'local';
+          this.loadLocal();
+        },
+      });
   }
 
   private loadLocal(): void {
     this.noBusinessAccess = false;
-    this.subs.add(
-      this.cashflowService.transactions$.subscribe((txns) => {
-        this.applyLocal(txns);
-        this.loading = false;
-      })
-    );
+    this.loadSub = this.cashflowService.transactions$.subscribe((txns) => {
+      this.applyLocal(txns);
+      this.loading = false;
+      this.businessContext.completeBusinessSwitch();
+    });
+  }
+
+  private prepareForBusinessChange(): void {
+    this.loadSub?.unsubscribe();
+    this.loading = true;
+    this.noBusinessAccess = false;
+    this.totalIn = 0;
+    this.totalOut = 0;
+    this.net = 0;
+    this.categoryStats = [];
+    this.incomeStats = [];
   }
 
   private applyRemote(d: DashboardReportResponse, txns: CashTransaction[]): void {

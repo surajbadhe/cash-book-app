@@ -30,6 +30,6 @@ export const guestGuard: CanActivateFn = () => {
   }
 
   // Already authenticated, redirect to dashboard
-  router.navigate(['/dashboard']);
+  router.navigate(['/transactions']);
   return false;
 };

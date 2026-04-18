@@ -1,3 +1,18 @@
+// Responsive: Make member table horizontally scrollable on small screens
+@media (max-width: 600px) {
+  .member-table {
+    overflow-x: auto;
+    display: block;
+    width: 100%;
+  }
+  .member-header,
+  .member-row {
+    min-width: 420px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 1fr 120px 80px;
+  }
+}
 .page { max-width: 720px; }
 
 .page-header {

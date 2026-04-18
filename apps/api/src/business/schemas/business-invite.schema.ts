@@ -10,7 +10,7 @@ export class BusinessInvite extends Document {
   @Prop({ required: true, lowercase: true, trim: true, index: true })
   email: string;
 
-  @Prop({ type: String, enum: BusinessMemberRole, default: BusinessMemberRole.EMPLOYEE })
+  @Prop({ type: String, enum: BusinessMemberRole, default: BusinessMemberRole.EDITOR })
   role: BusinessMemberRole;
 
   @Prop({ required: true })

@@ -6,7 +6,7 @@ import { UserRole } from './core/models/auth.models';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/login',
+    redirectTo: '/transactions',
     pathMatch: 'full',
   },
   {
@@ -55,13 +55,7 @@ export const routes: Routes = [
         (m) => m.ShellComponent
       ),
     children: [
-      {
-        path: 'dashboard',
-        loadComponent: () =>
-          import('./features/dashboard/dashboard.component').then(
-            (m) => m.DashboardComponent
-          ),
-      },
+      // Dashboard route removed
       {
         path: 'transactions',
         loadComponent: () =>
@@ -84,11 +78,16 @@ export const routes: Routes = [
           ),
       },
         {
-          path: 'shop',
+          path: 'books',
           loadComponent: () =>
             import('./features/shop/shop.component').then(
               (m) => m.ShopComponent
             ),
+        },
+        {
+          path: 'shop',
+          redirectTo: 'books',
+          pathMatch: 'full',
         },
         {
           path: 'team',

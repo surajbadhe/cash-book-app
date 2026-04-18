@@ -9,8 +9,9 @@ export enum BusinessType {
 
 export enum BusinessMemberRole {
   OWNER = 'owner',
-  MANAGER = 'manager',
-  EMPLOYEE = 'employee',
+  ADMIN = 'admin',
+  EDITOR = 'editor',
+  VIEWER = 'viewer',
 }
 
 export class BusinessMember {
@@ -20,7 +21,7 @@ export class BusinessMember {
   @Prop({ required: true, lowercase: true, trim: true })
   email: string;
 
-  @Prop({ type: String, enum: BusinessMemberRole, default: BusinessMemberRole.EMPLOYEE })
+  @Prop({ type: String, enum: BusinessMemberRole, default: BusinessMemberRole.EDITOR })
   role: BusinessMemberRole;
 
   @Prop({ default: true })

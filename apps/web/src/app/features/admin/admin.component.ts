@@ -16,7 +16,6 @@ import { ErrorLog } from '../../core/models/admin.models';
         <div class="nav-content">
           <h2>Admin Panel</h2>
           <div class="nav-actions">
-            <button class="btn btn-outline" (click)="goToDashboard()">Dashboard</button>
             <button class="btn btn-outline" (click)="logout()">Logout</button>
           </div>
         </div>
@@ -101,7 +100,7 @@ import { ErrorLog } from '../../core/models/admin.models';
     </div>
   `,
   styles: [`
-    @import '../dashboard/dashboard.component.scss';
+    /* Dashboard import removed */
 
     .grid {
       display: grid;
@@ -288,7 +287,5 @@ export class AdminComponent implements OnInit {
     this.authService.logout().subscribe();
   }
 
-  goToDashboard(): void {
-    this.router.navigate(['/dashboard']);
-  }
+  // goToDashboard removed
 }

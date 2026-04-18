@@ -65,6 +65,12 @@ export class CashflowApiService {
       .pipe(map((response) => normalizeId(response.data)));
   }
 
+  deleteBusiness(id: string): Observable<void> {
+    return this.http
+      .delete<ApiEnvelope<unknown>>(`${this.apiUrl}/businesses/${id}`)
+      .pipe(map(() => void 0));
+  }
+
   listBusinessMembers(businessId: string): Observable<BusinessMember[]> {
     return this.http
       .get<ApiEnvelope<BusinessMember[]>>(`${this.apiUrl}/businesses/${businessId}/members`)
@@ -73,7 +79,7 @@ export class CashflowApiService {
 
   addBusinessMember(
     businessId: string,
-    payload: { email: string; role?: 'manager' | 'employee' },
+    payload: { email: string; role?: 'admin' | 'editor' | 'viewer' },
   ): Observable<BusinessMember[]> {
     return this.http
       .post<ApiEnvelope<BusinessMember[]>>(`${this.apiUrl}/businesses/${businessId}/members`, payload)
@@ -83,7 +89,7 @@ export class CashflowApiService {
   updateBusinessMember(
     businessId: string,
     memberUserId: string,
-    payload: { role: 'manager' | 'employee' },
+    payload: { role: 'admin' | 'editor' | 'viewer' },
   ): Observable<BusinessMember> {
     return this.http
       .patch<ApiEnvelope<BusinessMember>>(
@@ -101,10 +107,10 @@ export class CashflowApiService {
 
   sendBusinessInvite(
     businessId: string,
-    payload: { email: string; role?: 'manager' | 'employee' },
-  ): Observable<{ id: string; email: string; role: 'manager' | 'employee'; expiresAt: string }> {
+    payload: { email: string; role?: 'admin' | 'editor' | 'viewer' },
+  ): Observable<{ id: string; email: string; role: 'admin' | 'editor' | 'viewer'; expiresAt: string }> {
     return this.http
-      .post<ApiEnvelope<{ id: string; email: string; role: 'manager' | 'employee'; expiresAt: string }>>(
+      .post<ApiEnvelope<{ id: string; email: string; role: 'admin' | 'editor' | 'viewer'; expiresAt: string }>>(
         `${this.apiUrl}/businesses/${businessId}/invites`,
         payload,
       )

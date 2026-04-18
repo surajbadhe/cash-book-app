@@ -47,6 +47,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loading = true;
   noBusinessAccess = false;
   private activeBusinessId: string | null = null;
+  private loadSub?: Subscription;
 
   ngOnInit(): void {
     this.subs.add(
@@ -63,6 +64,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
 
         this.activeBusinessId = nextBusinessId;
+        this.prepareForBusinessChange();
         if (this.user && this.isOnline) {
           this.load();
         }
@@ -75,6 +77,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.loadSub?.unsubscribe();
     this.subs.unsubscribe();
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', this.onOnline);
@@ -102,6 +105,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private load(): void {
+    this.loadSub?.unsubscribe();
     this.loading = true;
     if (this.user && this.isOnline) {
       this.dataMode = 'cloud';
@@ -117,65 +121,73 @@ export class DashboardComponent implements OnInit, OnDestroy {
       ? `${this.user!.email.split('@')[0]}'s Business`
       : 'My Business';
 
-    this.subs.add(
-      this.businessContext
-          .ensureBusinessReady(businessName)
-        .pipe(
-          switchMap((business) =>
-            business
-              ? forkJoin({
-                  business: of(business),
-                  transactions: this.cashflowApiService
-                    .listTransactions({ page: 1, limit: 5 })
-                    .pipe(catchError(() => of({ items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
-                  dashboard: this.cashflowApiService
-                    .getDashboardReport(new Date().toISOString().split('T')[0])
-                    .pipe(catchError(() => of(null))),
-                  settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
-                })
-              : of({ business: null, transactions: { items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, dashboard: null, settings: null })
-          )
+    this.loadSub = this.businessContext
+      .ensureBusinessReady(businessName)
+      .pipe(
+        switchMap((business) =>
+          business
+            ? forkJoin({
+                business: of(business),
+                transactions: this.cashflowApiService
+                  .listTransactions({ page: 1, limit: 5 })
+                  .pipe(catchError(() => of({ items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }))),
+                dashboard: this.cashflowApiService
+                  .getDashboardReport(new Date().toISOString().split('T')[0])
+                  .pipe(catchError(() => of(null))),
+                settings: this.cashflowApiService.getSettings().pipe(catchError(() => of(null))),
+              })
+            : of({ business: null, transactions: { items: [], page: 1, limit: 5, total: 0, summary: { totalIn: 0, totalOut: 0, net: 0 } }, dashboard: null, settings: null })
         )
-        .subscribe({
-          next: ({ business, transactions, dashboard, settings }) => {
-            this.noBusinessAccess = !business;
-            this.recentTransactions = transactions.items.map(mapTransactionItemToCashTransaction).slice(0, 5);
-            this.currencyCode = settings?.currency || 'INR';
-            if (business) {
-              this.applyDashboard(dashboard);
-            } else {
-              this.dailySummary = { totalIn: 0, totalOut: 0, profit: 0 };
-              this.weeklySummary = { totalIn: 0, totalOut: 0, profit: 0 };
-              this.monthlySummary = { totalIn: 0, totalOut: 0, profit: 0 };
-            }
-            this.loading = false;
-          },
-          error: () => {
-            this.dataMode = 'local';
-            this.loadLocal();
-          },
-        })
-    );
+      )
+      .subscribe({
+        next: ({ business, transactions, dashboard, settings }) => {
+          this.noBusinessAccess = !business;
+          this.recentTransactions = transactions.items.map(mapTransactionItemToCashTransaction).slice(0, 5);
+          this.currencyCode = settings?.currency || 'INR';
+          if (business) {
+            this.applyDashboard(dashboard);
+          } else {
+            this.dailySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+            this.weeklySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+            this.monthlySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+          }
+          this.loading = false;
+          this.businessContext.completeBusinessSwitch();
+        },
+        error: () => {
+          this.dataMode = 'local';
+          this.loadLocal();
+        },
+      });
   }
 
   private loadLocal(): void {
     this.noBusinessAccess = false;
-    this.subs.add(
-      this.cashflowService.transactions$.subscribe((txns) => {
-        const sorted = [...txns].sort(
-          (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
-        this.recentTransactions = sorted.slice(0, 5);
-        const now = new Date();
-        this.dailySummary = this.calcSummary(txns.filter((t) => this.isSameDay(new Date(t.timestamp), now)));
-        this.weeklySummary = this.calcSummary(txns.filter((t) => this.isThisWeek(new Date(t.timestamp), now)));
-        this.monthlySummary = this.calcSummary(txns.filter((t) =>
-          new Date(t.timestamp).getMonth() === now.getMonth() &&
-          new Date(t.timestamp).getFullYear() === now.getFullYear()
-        ));
-        this.loading = false;
-      })
-    );
+    this.loadSub = this.cashflowService.transactions$.subscribe((txns) => {
+      const sorted = [...txns].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      this.recentTransactions = sorted.slice(0, 5);
+      const now = new Date();
+      this.dailySummary = this.calcSummary(txns.filter((t) => this.isSameDay(new Date(t.timestamp), now)));
+      this.weeklySummary = this.calcSummary(txns.filter((t) => this.isThisWeek(new Date(t.timestamp), now)));
+      this.monthlySummary = this.calcSummary(txns.filter((t) =>
+        new Date(t.timestamp).getMonth() === now.getMonth() &&
+        new Date(t.timestamp).getFullYear() === now.getFullYear()
+      ));
+      this.loading = false;
+      this.businessContext.completeBusinessSwitch();
+    });
+  }
+
+  private prepareForBusinessChange(): void {
+    this.loadSub?.unsubscribe();
+    this.loading = true;
+    this.noBusinessAccess = false;
+    this.recentTransactions = [];
+    this.dailySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+    this.weeklySummary = { totalIn: 0, totalOut: 0, profit: 0 };
+    this.monthlySummary = { totalIn: 0, totalOut: 0, profit: 0 };
   }
 
   private applyDashboard(d: DashboardReportResponse | null): void {
@@ -206,3 +218,4 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private onOnline = (): void => { this.isOnline = true; this.load(); };
   private onOffline = (): void => { this.isOnline = false; this.load(); };
 }
+// File removed as part of overview/dashboard removal
