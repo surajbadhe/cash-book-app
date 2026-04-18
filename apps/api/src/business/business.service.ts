@@ -73,7 +73,12 @@ export class BusinessService {
       .sort({ createdAt: 1, name: 1 })
       .exec();
 
-    return businesses.map((business) => Object.assign(business, { accessRole: this.getAccessRole(business, userId) }));
+    return businesses.map((business) => {
+      const plain = business.toObject({ virtuals: true }) as unknown as Business & { accessRole: BusinessMemberRole; id: string };
+      plain.id = (business as any)._id?.toString() ?? plain.id;
+      plain.accessRole = this.getAccessRole(business, userId);
+      return plain;
+    });
   }
 
   async findByOwnerId(ownerId: string): Promise<Business> {

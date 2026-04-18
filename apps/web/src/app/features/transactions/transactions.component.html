@@ -9,7 +9,7 @@
         class="btn-action"
         type="button"
         (click)="triggerImport(importFileInput)"
-        [disabled]="noBusinessAccess || dataMode !== 'cloud' || importing"
+        [disabled]="!canAddTransactions || dataMode !== 'cloud' || importing"
         [title]="dataMode !== 'cloud' ? 'Import is available in cloud mode only' : 'Import transactions from CSV/TSV/TXT'"
         style="background:#334155;color:#fff;min-width:130px;"
       >
@@ -323,7 +323,7 @@
             Transaction saved!
           </div>
         }
-        <div class="type-pills">
+        <div class="type-pills desktop-only">
           <button type="button" class="pill" [class.in]="form.controls.type.value === 'cash-in'" (click)="form.controls.type.setValue('cash-in')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
@@ -419,13 +419,6 @@
               </select>
             </div>
 
-            <div class="form-field">
-              <label>Entry By</label>
-              <input type="text" formControlName="entryBy" placeholder="e.g. Owner" />
-            </div>
-          </div>
-
-          <div class="form-row">
             <div class="form-field">
               <label>Note <span class="opt">(optional)</span></label>
               <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
@@ -541,13 +534,6 @@
             </div>
 
             <div class="form-field">
-              <label>Entry By</label>
-              <input type="text" formControlName="entryBy" placeholder="e.g. Owner" />
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-field">
               <label>Note <span class="opt">(optional)</span></label>
               <input type="text" formControlName="note" placeholder="e.g. Table 12 lunch bill" />
             </div>
@@ -615,7 +601,7 @@
         </div>
       </div>
 
-      @if (selectedCount > 0 && dataMode === 'cloud') {
+      @if (selectedCount > 0 && dataMode === 'cloud' && canAddTransactions) {
         <div style="padding:10px 12px;font-size:12px;background:#6366f1;color:#fff;display:flex;justify-content:space-between;align-items:center;">
           <span>{{ selectedCount }} transaction(s) selected</span>
           <div style="display:flex;gap:8px;align-items:center;">
@@ -675,14 +661,16 @@
               <div class="txn-card-party" *ngIf="txn.raw.party">{{ txn.raw.party }}</div>
               <div class="txn-card-note" *ngIf="txn.raw.note">{{ txn.raw.note }}</div>
             </div>
-            <div class="txn-card-row txn-card-actions">
-              <button type="button" class="txn-action-btn edit" (click)="openEdit(txn.raw)">
-                <span class="material-symbols-outlined">edit</span>
-              </button>
-              <button type="button" class="txn-action-btn delete" (click)="delete(txn.raw.id)">
-                <span class="material-symbols-outlined">delete</span>
-              </button>
-            </div>
+            @if (canAddTransactions) {
+              <div class="txn-card-row txn-card-actions">
+                <button type="button" class="txn-action-btn edit" (click)="openEdit(txn.raw)">
+                  <span class="material-symbols-outlined">edit</span>
+                </button>
+                <button type="button" class="txn-action-btn delete" (click)="delete(txn.raw.id)">
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            }
           </div>
         </ng-container>
         <ng-template #noTransactionsMobile>

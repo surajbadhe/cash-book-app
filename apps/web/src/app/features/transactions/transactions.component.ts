@@ -815,11 +815,12 @@ export class TransactionsComponent implements OnInit, OnDestroy {
     this.subs.add(
       this.businessContext.currentBusiness$.subscribe((business) => {
         const nextBusinessId = business?.id ?? null;
-        if (this.activeBusinessId === nextBusinessId) {
-          return;
-        }
+        const businessChanged = this.activeBusinessId !== nextBusinessId;
         this.activeBusinessId = nextBusinessId;
         this.currentBusiness = business as BusinessProfile | null;
+        if (!businessChanged) {
+          return;
+        }
         this.prepareForBusinessChange();
         if (this.user && this.isOnline) {
           this.load();
@@ -1879,6 +1880,11 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   private renderRowActions(transaction: CashTransaction | undefined): HTMLElement | string {
     if (!transaction) {
+      return '';
+    }
+
+    // Viewers cannot edit or delete
+    if (!this.canAddTransactions) {
       return '';
     }
 

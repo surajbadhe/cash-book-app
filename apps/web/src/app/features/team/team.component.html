@@ -57,7 +57,9 @@
           <div class="member-header">
             <span>Member</span>
             <span>Role</span>
-            <span>Actions</span>
+            @if (isAdminOrOwner) {
+              <span>Actions</span>
+            }
           </div>
           @for (member of members; track member.userId) {
             <div class="member-row">
@@ -72,7 +74,7 @@
               <div class="role-cell">
                 @if (member.role === 'owner') {
                   <span class="role-badge owner">Owner</span>
-                } @else {
+                } @else if (isAdminOrOwner) {
                   <select
                     class="role-select"
                     [value]="member.role"
@@ -86,11 +88,13 @@
                   @if (updatingRoleIds.has(member.userId)) {
                     <span class="updating-label">Updating…</span>
                   }
+                } @else {
+                  <span class="role-badge">{{ member.role | titlecase }}</span>
                 }
               </div>
 
               <div class="action-cell">
-                @if (member.role !== 'owner') {
+                @if (member.role !== 'owner' && isAdminOrOwner) {
                   <button
                     class="btn-remove"
                     type="button"
