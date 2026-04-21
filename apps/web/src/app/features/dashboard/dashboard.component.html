@@ -19,9 +19,27 @@
 
   @if (loading) {
     <div class="skeleton-grid">
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
-      <div class="skeleton-card"></div>
+      @for (_ of [1,2,3]; track _) {
+        <div class="skeleton-card">
+          <div class="sk sk-label"></div>
+          <div class="sk sk-amount sk-green"></div>
+          <div class="sk sk-amount sk-red"></div>
+          <div class="sk sk-net"></div>
+        </div>
+      }
+    </div>
+    <div class="sk-section-title"></div>
+    <div class="sk-txn-list">
+      @for (_ of [1,2,3,4]; track _) {
+        <div class="sk-txn-row">
+          <div class="sk sk-txn-icon"></div>
+          <div class="sk-txn-body">
+            <div class="sk sk-txn-label"></div>
+            <div class="sk sk-txn-sub"></div>
+          </div>
+          <div class="sk sk-txn-amount"></div>
+        </div>
+      }
     </div>
   } @else if (noBusinessAccess) {
     <section class="card">
