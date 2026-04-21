@@ -56,7 +56,7 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   dataMode: 'cloud' | 'local' = 'local';
   isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
   currencyCode = 'INR';
-  loading = false;
+  loading = true;
   noBusinessAccess = false;
   showForm = false;
   formSuccess = false;
@@ -91,13 +91,13 @@ export class TransactionsComponent implements OnInit, OnDestroy {
   readonly modeOptions = ['Cash', 'UPI', 'Card', 'Bank'];
   editForm = this.fb.group({
     type: this.fb.nonNullable.control<TransactionType>('cash-in'),
-    amount: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01)]),
+    amount: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01), Validators.max(10_000_000)]),
     category: this.fb.nonNullable.control<string>(CASH_IN_CATEGORIES[0], [Validators.required]),
     timestamp: this.fb.nonNullable.control<string>(this.nowLocal(), [Validators.required]),
-    party: this.fb.nonNullable.control<string>(''),
+    party: this.fb.nonNullable.control<string>('', [Validators.maxLength(100)]),
     mode: this.fb.nonNullable.control<string>('Cash'),
-    entryBy: this.fb.nonNullable.control<string>(this.defaultEntryBy()),
-    note: this.fb.nonNullable.control<string>(''),
+    entryBy: this.fb.nonNullable.control<string>(this.defaultEntryBy(), [Validators.maxLength(60)]),
+    note: this.fb.nonNullable.control<string>('', [Validators.maxLength(200)]),
   });
   editSuccess = false;
   editError = '';
@@ -109,13 +109,13 @@ export class TransactionsComponent implements OnInit, OnDestroy {
 
   form = this.fb.group({
     type: this.fb.nonNullable.control<TransactionType>('cash-in'),
-    amount: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01)]),
+    amount: this.fb.control<number | null>(null, [Validators.required, Validators.min(0.01), Validators.max(10_000_000)]),
     category: this.fb.nonNullable.control<string>(CASH_IN_CATEGORIES[0], [Validators.required]),
     timestamp: this.fb.nonNullable.control<string>(this.nowLocal(), [Validators.required]),
-    party: this.fb.nonNullable.control<string>(''),
+    party: this.fb.nonNullable.control<string>('', [Validators.maxLength(100)]),
     mode: this.fb.nonNullable.control<string>('Cash'),
-    entryBy: this.fb.nonNullable.control<string>(this.defaultEntryBy()),
-    note: this.fb.nonNullable.control<string>(''),
+    entryBy: this.fb.nonNullable.control<string>(this.defaultEntryBy(), [Validators.maxLength(60)]),
+    note: this.fb.nonNullable.control<string>('', [Validators.maxLength(200)]),
   });
 
   categoryForm = this.fb.nonNullable.group({
