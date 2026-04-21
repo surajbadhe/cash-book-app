@@ -65,6 +65,12 @@ export class CashflowApiService {
       .pipe(map((response) => normalizeId(response.data)));
   }
 
+  deleteBusiness(id: string): Observable<void> {
+    return this.http
+      .delete<ApiEnvelope<unknown>>(`${this.apiUrl}/businesses/${id}`)
+      .pipe(map(() => void 0));
+  }
+
   listBusinessMembers(businessId: string): Observable<BusinessMember[]> {
     return this.http
       .get<ApiEnvelope<BusinessMember[]>>(`${this.apiUrl}/businesses/${businessId}/members`)

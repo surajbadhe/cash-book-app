@@ -4,70 +4,133 @@
     <p class="page-sub">Create and manage your shop profiles</p>
   </div>
 
-  <!-- Shop Selector -->
+  <!-- Your Shops Section -->
   <section class="card">
     <div class="section-header-row">
       <div>
         <h2 class="section-title">Your Shops</h2>
-        <p class="section-desc">Switch between shops or create a new one.</p>
+        <p class="section-desc">Manage all your shop locations</p>
       </div>
-      @if (!isCreating) {
-        <button class="btn-primary btn-small" type="button" (click)="startCreating()">+ New Shop</button>
-      }
+      <button class="btn-primary btn-small" type="button" (click)="openCreateModal()">+ New Shop</button>
     </div>
 
     @if (businesses.length > 0) {
-      <div class="shop-tabs">
-        @for (b of businesses; track b.id) {
-          <button
-            type="button"
-            class="shop-chip"
-            [class.active]="!isCreating && currentBusiness?.id === b.id"
-            (click)="switchShop(b.id || '')"
-          >
-            {{ b.name }}
-            <span class="role-badge">{{ b.accessRole || 'owner' }}</span>
-          </button>
-        }
+      <div class="table-wrapper">
+        <table class="shops-table">
+          <thead>
+            <tr>
+              <th>Shop Name</th>
+              <th>Owner</th>
+              <th class="actions-col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (shop of businesses; track shop.id) {
+              <tr>
+                <td class="shop-name">
+                  <span class="name-text">{{ shop.name }}</span>
+                </td>
+                <td class="owner-cell">
+                  <span class="role-badge">{{ shop.accessRole || 'owner' }}</span>
+                </td>
+                <td class="actions-cell">
+                  <button class="btn-edit" type="button" (click)="openEditModal(shop)" title="Edit shop">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                      <path d="M2 12.5V14h1.5l8.82-8.82-1.5-1.5L2 12.5z" fill="currentColor" />
+                      <path d="M12.854 2.646a1.5 1.5 0 00-2.122 0l-1.06 1.06 1.5 1.5 1.06-1.06a.5.5 0 00.707-.707l-1.086-1.086a1.5 1.5 0 000-2.122l-1.06-1.06a1.5 1.5 0 00-2.122 0l-1.06 1.06 1.5 1.5 1.06-1.06a.5.5 0 00-.707-.707l-.646.646" fill="currentColor" />
+                    </svg>
+                  </button>
+                  @if (shop.accessRole === 'owner') {
+                    <button class="btn-delete" type="button" (click)="openDeleteConfirm(shop)" title="Delete shop">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      </svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    } @else if (!isCreating) {
-      <p class="section-desc empty-note">No shops yet. Create your first shop below.</p>
+    } @else {
+      <p class="section-desc empty-note">No shops yet. Create your first shop to get started.</p>
     }
   </section>
-
-  <!-- Edit / Create Form -->
-  @if (isCreating || currentBusiness) {
-    <section class="card">
-      <h2 class="section-title">{{ isCreating ? 'New Shop' : 'Edit Shop' }}</h2>
-
-      <form [formGroup]="shopForm" (ngSubmit)="saveShop()" class="stack-form">
-        <label>
-          <span>Shop name <span class="required">*</span></span>
-          <input formControlName="name" placeholder="e.g. Main Branch" />
-        </label>
-        @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
-          <p class="err">Shop name must be at least 2 characters.</p>
-        }
-
-        <label>
-          <span>Phone</span>
-          <input formControlName="phone" placeholder="Optional" />
-        </label>
-
-        <label>
-          <span>Address</span>
-          <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
-        </label>
-
-        <div class="form-actions">
-          <button class="btn-primary" type="submit" [disabled]="saving">
-            {{ saving ? (isCreating ? 'Creating…' : 'Saving…') : (isCreating ? 'Create Shop' : 'Save Changes') }}
-          </button>
-          @if (isCreating) {
-            <button class="btn-secondary" type="button" (click)="cancelCreating()">Cancel</button>
-          }
-        </div>
-      </form>
-    </section>
-  }
 </div>
+
+<!-- Edit/Create Shop Modal -->
+<app-modal [isOpen]="isModalOpen" [title]="isCreating ? 'Create New Shop' : 'Edit Shop'" (onClose)="closeModal()">
+  <form [formGroup]="shopForm" (ngSubmit)="saveShop()" class="stack-form">
+    <label>
+      <span>Shop name <span class="required">*</span></span>
+      <input formControlName="name" placeholder="e.g. Main Branch" />
+    </label>
+    @if (shopForm.controls.name.touched && shopForm.controls.name.invalid) {
+      <p class="err">Shop name must be at least 2 characters.</p>
+    }
+
+    <label>
+      <span>Phone</span>
+      <input formControlName="phone" placeholder="Optional" />
+    </label>
+
+    <label>
+      <span>Address</span>
+      <textarea formControlName="address" rows="3" placeholder="Optional"></textarea>
+    </label>
+
+    <div class="form-actions">
+      <button class="btn-primary" type="submit" [disabled]="saving">
+        {{ saving ? (isCreating ? 'Creating…' : 'Saving…') : (isCreating ? 'Create Shop' : 'Save Changes') }}
+      </button>
+      <button class="btn-secondary" type="button" (click)="closeModal()">Cancel</button>
+    </div>
+  </form>
+</app-modal>
+
+<!-- Delete Confirmation Step 1 -->
+<app-modal [isOpen]="isDeleteConfirm1Open" title="Delete Shop?" (onClose)="cancelDelete()">
+  <div class="confirm-body">
+    <div class="confirm-icon danger">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M12 9v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h3 class="confirm-title">Are you sure?</h3>
+    <p class="confirm-message">
+      You are about to delete <strong>{{ deletingShop?.name }}</strong>. This will permanently remove
+      all transactions, reports, and data associated with this shop.
+    </p>
+    <div class="form-actions">
+      <button class="btn-danger" type="button" (click)="confirmDeleteStep2()">Yes, delete this shop</button>
+      <button class="btn-secondary" type="button" (click)="cancelDelete()">Cancel</button>
+    </div>
+  </div>
+</app-modal>
+
+<!-- Delete Confirmation Step 2 (Final) -->
+<app-modal [isOpen]="isDeleteConfirm2Open" title="Final Confirmation" (onClose)="cancelDelete()">
+  <div class="confirm-body">
+    <div class="confirm-icon danger">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+        <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h3 class="confirm-title">This cannot be undone!</h3>
+    <p class="confirm-message">
+      All <strong>transactions, categories, and reports</strong> under
+      <strong>{{ deletingShop?.name }}</strong> will be <strong>permanently deleted</strong>.
+      This action is irreversible.
+    </p>
+    <div class="form-actions">
+      <button class="btn-danger" type="button" [disabled]="deleting" (click)="confirmDeleteFinal()">
+        {{ deleting ? 'Deleting…' : 'Yes, permanently delete everything' }}
+      </button>
+      <button class="btn-secondary" type="button" (click)="cancelDelete()">No, keep my shop</button>
+    </div>
+  </div>
+</app-modal>

@@ -161,4 +161,17 @@ export class BusinessController {
       data: accepted,
     };
   }
+
+  @Delete(':businessId')
+  @ApiOperation({ summary: 'Delete a shop and all its data (owner only)' })
+  async deleteBusiness(
+    @CurrentUser('sub') userId: string,
+    @Param('businessId') businessId: string,
+  ) {
+    await this.businessService.deleteBusiness(userId, businessId);
+    return {
+      success: true,
+      message: 'Shop and all associated data deleted successfully',
+    };
+  }
 }

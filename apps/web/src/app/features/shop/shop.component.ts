@@ -6,11 +6,12 @@ import { BusinessProfile } from '../../core/models/cashflow-api.models';
 import { BusinessContextService } from '../../core/services/business-context.service';
 import { CashflowApiService } from '../../core/services/cashflow-api.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ModalComponent } from '../../shared/components/modal/modal.component';
 
 @Component({
   selector: 'app-shop',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ModalComponent],
   templateUrl: './shop.component.html',
   styleUrls: ['./shop.component.scss'],
 })
@@ -23,8 +24,16 @@ export class ShopComponent implements OnInit, OnDestroy {
 
   businesses: BusinessProfile[] = [];
   currentBusiness: BusinessProfile | null = null;
+  isModalOpen = false;
   isCreating = false;
   saving = false;
+  editingShop: BusinessProfile | null = null;
+
+  // Delete confirmation state
+  isDeleteConfirm1Open = false;
+  isDeleteConfirm2Open = false;
+  deletingShop: BusinessProfile | null = null;
+  deleting = false;
 
   shopForm = this.fb.nonNullable.group({
     name: this.fb.nonNullable.control('', [Validators.required, Validators.minLength(2)]),
@@ -37,12 +46,6 @@ export class ShopComponent implements OnInit, OnDestroy {
     this.subs.add(
       this.businessContext.currentBusiness$.subscribe((b) => {
         this.currentBusiness = b;
-        this.isCreating = false;
-        this.shopForm.reset({
-          name: b?.name || '',
-          phone: b?.phone || '',
-          address: b?.address || '',
-        });
       }),
     );
     this.subs.add(this.businessContext.refreshBusinesses().subscribe({ error: () => void 0 }));
@@ -52,23 +55,67 @@ export class ShopComponent implements OnInit, OnDestroy {
     this.subs.unsubscribe();
   }
 
+  openCreateModal(): void {
+    this.isCreating = true;
+    this.editingShop = null;
+    this.shopForm.reset({ name: '', phone: '', address: '' });
+    this.isModalOpen = true;
+  }
+
+  openEditModal(shop: BusinessProfile): void {
+    this.isCreating = false;
+    this.editingShop = shop;
+    this.shopForm.reset({
+      name: shop.name || '',
+      phone: shop.phone || '',
+      address: shop.address || '',
+    });
+    this.isModalOpen = true;
+  }
+
+  closeModal(): void {
+    this.isModalOpen = false;
+    this.isCreating = false;
+    this.editingShop = null;
+  }
+
+  openDeleteConfirm(shop: BusinessProfile): void {
+    this.deletingShop = shop;
+    this.isDeleteConfirm1Open = true;
+  }
+
+  confirmDeleteStep2(): void {
+    this.isDeleteConfirm1Open = false;
+    this.isDeleteConfirm2Open = true;
+  }
+
+  cancelDelete(): void {
+    this.isDeleteConfirm1Open = false;
+    this.isDeleteConfirm2Open = false;
+    this.deletingShop = null;
+  }
+
+  confirmDeleteFinal(): void {
+    if (!this.deletingShop?.id) return;
+    this.deleting = true;
+    this.subs.add(
+      this.cashflowApiService.deleteBusiness(this.deletingShop.id).subscribe({
+        next: () => {
+          this.businessContext.refreshBusinesses().subscribe();
+          this.cancelDelete();
+          this.deleting = false;
+          this.toastService.success('Shop and all its data deleted successfully');
+        },
+        error: (err) => {
+          this.deleting = false;
+          this.toastService.error(err?.error?.message || 'Failed to delete shop');
+        },
+      }),
+    );
+  }
+
   switchShop(id: string): void {
     this.businessContext.selectBusinessById(id);
-    this.isCreating = false;
-  }
-
-  startCreating(): void {
-    this.isCreating = true;
-    this.shopForm.reset({ name: '', phone: '', address: '' });
-  }
-
-  cancelCreating(): void {
-    this.isCreating = false;
-    this.shopForm.reset({
-      name: this.currentBusiness?.name || '',
-      phone: this.currentBusiness?.phone || '',
-      address: this.currentBusiness?.address || '',
-    });
   }
 
   saveShop(): void {
@@ -84,32 +131,33 @@ export class ShopComponent implements OnInit, OnDestroy {
       address: v.address.trim() || undefined,
     };
 
-    const isNew = this.isCreating || !this.currentBusiness?.id;
+    const isNew = this.isCreating;
     this.saving = true;
 
     const request$ = isNew
       ? this.cashflowApiService.createBusiness({ ...payload, type: 'restaurant', currency: 'INR', timezone: 'Asia/Kolkata' })
-      : this.cashflowApiService.updateBusiness(this.currentBusiness!.id!, payload);
+      : this.cashflowApiService.updateBusiness(this.editingShop!.id!, payload);
 
     this.subs.add(
       request$.subscribe({
         next: (business) => {
           this.businessContext.refreshBusinesses().subscribe({
             next: () => {
-              this.businessContext.selectBusinessById(business.id || '');
-              this.isCreating = false;
-              this.saving = false;
-              this.toastService.success(isNew ? 'Shop created successfully.' : 'Shop updated successfully.');
+              if (isNew) {
+                this.businessContext.selectBusinessById(business.id || '');
+              }
+              this.closeModal();
+              this.toastService.success(`Shop ${isNew ? 'created' : 'updated'} successfully`);
             },
             error: () => {
               this.saving = false;
-              this.toastService.error('Shop saved but the list could not be refreshed.');
+              this.toastService.error('Failed to refresh shops');
             },
           });
         },
         error: (err) => {
           this.saving = false;
-          this.toastService.error(err?.error?.message || 'Unable to save shop.');
+          this.toastService.error(err?.error?.message || 'Failed to save shop');
         },
       }),
     );

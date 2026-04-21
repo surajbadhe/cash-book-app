@@ -17,6 +17,8 @@ import { CreateBusinessInviteDto } from './dto/create-business-invite.dto';
 import { CreateBusinessDto } from './dto/create-business.dto';
 import { UpdateBusinessMemberDto } from './dto/update-business-member.dto';
 import { UpdateBusinessDto } from './dto/update-business.dto';
+import { Category } from '../category/schemas/category.schema';
+import { Transaction } from '../transaction/schemas/transaction.schema';
 import { BusinessInvite } from './schemas/business-invite.schema';
 import { Business, BusinessMemberRole } from './schemas/business.schema';
 
@@ -25,6 +27,8 @@ export class BusinessService {
   constructor(
     @InjectModel(Business.name) private readonly businessModel: Model<Business>,
     @InjectModel(BusinessInvite.name) private readonly businessInviteModel: Model<BusinessInvite>,
+    @InjectModel(Transaction.name) private readonly transactionModel: Model<Transaction>,
+    @InjectModel(Category.name) private readonly categoryModel: Model<Category>,
     private readonly userService: UserService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
@@ -73,7 +77,11 @@ export class BusinessService {
       .sort({ createdAt: 1, name: 1 })
       .exec();
 
-    return businesses.map((business) => Object.assign(business, { accessRole: this.getAccessRole(business, userId) }));
+    return businesses.map((business) => ({
+      ...business.toObject({ virtuals: true }),
+      id: (business._id as any)?.toString() ?? '',
+      accessRole: this.getAccessRole(business, userId),
+    })) as any;
   }
 
   async findByOwnerId(ownerId: string): Promise<Business> {
@@ -385,5 +393,30 @@ export class BusinessService {
   private canManageShop(business: Business, userId: string): boolean {
     const role = this.getAccessRole(business, userId);
     return role === BusinessMemberRole.OWNER || role === BusinessMemberRole.MANAGER;
+  }
+
+  async deleteBusiness(userId: string, businessId: string): Promise<void> {
+    if (!isValidObjectId(businessId)) {
+      throw new BadRequestException('Invalid businessId');
+    }
+
+    const business = await this.businessModel.findById(businessId).exec();
+    if (!business || !business.isActive) {
+      throw new NotFoundException('Shop not found');
+    }
+
+    if (business.ownerId !== userId) {
+      throw new ForbiddenException('Only the shop owner can delete this shop');
+    }
+
+    // Cascade delete all related data in parallel
+    await Promise.all([
+      this.transactionModel.deleteMany({ businessId }).exec(),
+      this.categoryModel.deleteMany({ businessId }).exec(),
+      this.businessInviteModel.deleteMany({ businessId }).exec(),
+    ]);
+
+    // Hard delete the business itself
+    await this.businessModel.findByIdAndDelete(businessId).exec();
   }
 }
